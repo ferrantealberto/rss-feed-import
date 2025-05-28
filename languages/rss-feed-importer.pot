@@ -1,0 +1,832 @@
+# RSS Feed Importer Pro - Translation Template
+# Copyright (C) 2025 RSS Feed Importer Pro
+# This file is distributed under the same license as the RSS Feed Importer Pro package.
+msgid ""
+msgstr ""
+"Project-Id-Version: RSS Feed Importer Pro 1.0.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-01-01 12:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: rss-feed-importer.php:45
+msgid "RSS Feed Importer"
+msgstr ""
+
+#: rss-feed-importer.php:46
+msgid "RSS Importer"
+msgstr ""
+
+#: rss-feed-importer.php:56
+msgid "Gestione Feed"
+msgstr ""
+
+#: rss-feed-importer.php:65
+msgid "Post Importati"
+msgstr ""
+
+#: rss-feed-importer.php:74
+msgid "Impostazioni"
+msgstr ""
+
+#: templates/admin-page.php:12
+msgid "RSS Feed Importer - Gestione Feed"
+msgstr ""
+
+#: templates/admin-page.php:18
+msgid "Aggiungi/Modifica Feed RSS"
+msgstr ""
+
+#: templates/admin-page.php:25
+msgid "Nome Feed"
+msgstr ""
+
+#: templates/admin-page.php:28
+msgid "Nome identificativo per questo feed RSS"
+msgstr ""
+
+#: templates/admin-page.php:35
+msgid "URL Feed RSS"
+msgstr ""
+
+#: templates/admin-page.php:38
+msgid "Valida Feed"
+msgstr ""
+
+#: templates/admin-page.php:39
+msgid "URL completo del feed RSS da importare"
+msgstr ""
+
+#: templates/admin-page.php:46
+msgid "Stato"
+msgstr ""
+
+#: templates/admin-page.php:49
+msgid "Attivo"
+msgstr ""
+
+#: templates/admin-page.php:50
+msgid "Inattivo"
+msgstr ""
+
+#: templates/admin-page.php:57
+msgid "Frequenza Importazione"
+msgstr ""
+
+#: templates/admin-page.php:60
+msgid "Ogni ora"
+msgstr ""
+
+#: templates/admin-page.php:61
+msgid "Giornaliera"
+msgstr ""
+
+#: templates/admin-page.php:62
+msgid "Settimanale"
+msgstr ""
+
+#: templates/admin-page.php:64
+msgid "Frequenza con cui importare automaticamente nuovi post da questo feed"
+msgstr ""
+
+#: templates/admin-page.php:70
+msgid "Stato Post"
+msgstr ""
+
+#: templates/admin-page.php:73
+msgid "Bozza"
+msgstr ""
+
+#: templates/admin-page.php:74
+msgid "Pubblicato"
+msgstr ""
+
+#: templates/admin-page.php:75
+msgid "In attesa di revisione"
+msgstr ""
+
+#: templates/admin-page.php:77
+msgid "Stato dei post importati da questo feed"
+msgstr ""
+
+#: templates/admin-page.php:83
+msgid "Autore"
+msgstr ""
+
+#: templates/admin-page.php:92
+msgid "Autore assegnato ai post importati"
+msgstr ""
+
+#: templates/admin-page.php:97
+msgid "Opzioni Automatiche"
+msgstr ""
+
+#: templates/admin-page.php:101
+msgid "Genera categorie automaticamente"
+msgstr ""
+
+#: templates/admin-page.php:105
+msgid "Genera tag automaticamente"
+msgstr ""
+
+#: templates/admin-page.php:107
+msgid "Genera automaticamente categorie e tag basati sul contenuto del post"
+msgstr ""
+
+#: templates/admin-page.php:112
+msgid "Salva Feed"
+msgstr ""
+
+#: templates/admin-page.php:113
+msgid "Nuovo Feed"
+msgstr ""
+
+#: templates/admin-page.php:120
+msgid "Feed RSS Configurati"
+msgstr ""
+
+#: templates/admin-page.php:123
+msgid "Nessun feed RSS configurato. Aggiungi il tuo primo feed utilizzando il modulo sopra."
+msgstr ""
+
+#: templates/admin-page.php:127
+msgid "Importa Tutti i Feed"
+msgstr ""
+
+#: templates/admin-page.php:134
+msgid "Nome"
+msgstr ""
+
+#: templates/admin-page.php:135
+msgid "URL"
+msgstr ""
+
+#: templates/admin-page.php:137
+msgid "Frequenza"
+msgstr ""
+
+#: templates/admin-page.php:138
+msgid "Ultima Importazione"
+msgstr ""
+
+#: templates/admin-page.php:139
+msgid "Post Importati"
+msgstr ""
+
+#: templates/admin-page.php:140
+msgid "Azioni"
+msgstr ""
+
+#: templates/admin-page.php:148
+msgid "Modifica"
+msgstr ""
+
+#: templates/admin-page.php:151
+msgid "Importa Ora"
+msgstr ""
+
+#: templates/admin-page.php:154
+msgid "Elimina"
+msgstr ""
+
+#: templates/admin-page.php:160
+msgid "Apri feed in nuova finestra"
+msgstr ""
+
+#: templates/admin-page.php:180
+msgid "Mai"
+msgstr ""
+
+#: templates/admin-page.php:187
+msgid "Importa"
+msgstr ""
+
+#: templates/admin-page.php:197
+msgid "Elaborazione in corso..."
+msgstr ""
+
+#: templates/imported-posts.php:12
+msgid "RSS Feed Importer - Post Importati"
+msgstr ""
+
+#: templates/imported-posts.php:20
+msgid "Post Totali Importati"
+msgstr ""
+
+#: templates/imported-posts.php:28
+msgid "Importati Oggi"
+msgstr ""
+
+#: templates/imported-posts.php:36
+msgid "Importazioni Riuscite"
+msgstr ""
+
+#: templates/imported-posts.php:44
+msgid "Errori"
+msgstr ""
+
+#: templates/imported-posts.php:54
+msgid "Feed:"
+msgstr ""
+
+#: templates/imported-posts.php:56
+msgid "Tutti i feed"
+msgstr ""
+
+#: templates/imported-posts.php:66
+msgid "Stato:"
+msgstr ""
+
+#: templates/imported-posts.php:68
+msgid "Tutti gli stati"
+msgstr ""
+
+#: templates/imported-posts.php:69
+msgid "Successo"
+msgstr ""
+
+#: templates/imported-posts.php:70
+msgid "Errore"
+msgstr ""
+
+#: templates/imported-posts.php:71
+msgid "Duplicato"
+msgstr ""
+
+#: templates/imported-posts.php:74
+msgid "Dal:"
+msgstr ""
+
+#: templates/imported-posts.php:77
+msgid "Al:"
+msgstr ""
+
+#: templates/imported-posts.php:80
+msgid "Filtra"
+msgstr ""
+
+#: templates/imported-posts.php:81
+msgid "Reset"
+msgstr ""
+
+#: templates/imported-posts.php:88
+msgid "Nessun post importato trovato con i filtri selezionati."
+msgstr ""
+
+#: templates/imported-posts.php:92
+msgid "Seleziona azione da eseguire"
+msgstr ""
+
+#: templates/imported-posts.php:94
+msgid "Azioni in blocco"
+msgstr ""
+
+#: templates/imported-posts.php:95
+msgid "Pubblica"
+msgstr ""
+
+#: templates/imported-posts.php:96
+msgid "Porta in bozza"
+msgstr ""
+
+#: templates/imported-posts.php:97
+msgid "Sposta nel cestino"
+msgstr ""
+
+#: templates/imported-posts.php:99
+msgid "Applica"
+msgstr ""
+
+#: templates/imported-posts.php:103
+msgid "%s elementi"
+msgstr ""
+
+#: templates/imported-posts.php:112
+msgid "Seleziona tutto"
+msgstr ""
+
+#: templates/imported-posts.php:115
+msgid "Titolo"
+msgstr ""
+
+#: templates/imported-posts.php:116
+msgid "Feed"
+msgstr ""
+
+#: templates/imported-posts.php:117
+msgid "Stato Post"
+msgstr ""
+
+#: templates/imported-posts.php:118
+msgid "Stato Importazione"
+msgstr ""
+
+#: templates/imported-posts.php:119
+msgid "Data Importazione"
+msgstr ""
+
+#: templates/imported-posts.php:120
+msgid "Categorie/Tag"
+msgstr ""
+
+#: templates/imported-posts.php:126
+msgid "Seleziona %s"
+msgstr ""
+
+#: templates/imported-posts.php:138
+msgid "Visualizza"
+msgstr ""
+
+#: templates/imported-posts.php:141
+msgid "Sorgente"
+msgstr ""
+
+#: templates/imported-posts.php:147
+msgid "Post non più disponibile"
+msgstr ""
+
+#: templates/imported-posts.php:156
+msgid "In attesa"
+msgstr ""
+
+#: templates/imported-posts.php:157
+msgid "Privato"
+msgstr ""
+
+#: templates/imported-posts.php:158
+msgid "Cestino"
+msgstr ""
+
+#: templates/imported-posts.php:165
+msgid "N/A"
+msgstr ""
+
+#: templates/imported-posts.php:185
+msgid "Cat:"
+msgstr ""
+
+#: templates/imported-posts.php:196
+msgid "Tag:"
+msgstr ""
+
+#: templates/imported-posts.php:203
+msgid "Nessuna"
+msgstr ""
+
+#: templates/imported-posts.php:230
+msgid "Esporta Dati"
+msgstr ""
+
+#: templates/imported-posts.php:231
+msgid "Esporta l'elenco completo dei post importati in formato CSV per analisi o backup."
+msgstr ""
+
+#: templates/imported-posts.php:237
+msgid "Formato:"
+msgstr ""
+
+#: templates/imported-posts.php:242
+msgid "Periodo:"
+msgstr ""
+
+#: templates/imported-posts.php:244
+msgid "Tutti"
+msgstr ""
+
+#: templates/imported-posts.php:245
+msgid "Ultimo mese"
+msgstr ""
+
+#: templates/imported-posts.php:246
+msgid "Ultima settimana"
+msgstr ""
+
+#: templates/imported-posts.php:247
+msgid "Oggi"
+msgstr ""
+
+#: templates/imported-posts.php:250
+msgid "Esporta"
+msgstr ""
+
+#: templates/settings-page.php:12
+msgid "RSS Feed Importer - Impostazioni"
+msgstr ""
+
+#: templates/settings-page.php:20
+msgid "Impostazioni Importazione"
+msgstr ""
+
+#: templates/settings-page.php:25
+msgid "Numero massimo post per importazione"
+msgstr ""
+
+#: templates/settings-page.php:31
+msgid "Limita il numero di post importati per ogni esecuzione per evitare timeout del server."
+msgstr ""
+
+#: templates/settings-page.php:38
+msgid "Metodo controllo duplicati"
+msgstr ""
+
+#: templates/settings-page.php:42
+msgid "Titolo + URL"
+msgstr ""
+
+#: templates/settings-page.php:45
+msgid "Solo Titolo"
+msgstr ""
+
+#: templates/settings-page.php:48
+msgid "Solo URL"
+msgstr ""
+
+#: templates/settings-page.php:51
+msgid "Scegli come identificare i post duplicati durante l'importazione."
+msgstr ""
+
+#: templates/settings-page.php:58
+msgid "Stato post predefinito"
+msgstr ""
+
+#: templates/settings-page.php:70
+msgid "Stato predefinito per i nuovi post importati (può essere sovrascritto per singolo feed)."
+msgstr ""
+
+#: templates/settings-page.php:77
+msgid "Lunghezza riassunto"
+msgstr ""
+
+#: templates/settings-page.php:82
+msgid "parole"
+msgstr ""
+
+#: templates/settings-page.php:84
+msgid "Numero di parole per il riassunto automatico dei post importati."
+msgstr ""
+
+#: templates/settings-page.php:92
+msgid "Gestione Categorie e Tag"
+msgstr ""
+
+#: templates/settings-page.php:97
+msgid "Metodo creazione categorie"
+msgstr ""
+
+#: templates/settings-page.php:101
+msgid "Automatico da contenuto"
+msgstr ""
+
+#: templates/settings-page.php:104
+msgid "Da categorie del feed RSS"
+msgstr ""
+
+#: templates/settings-page.php:107
+msgid "Categoria fissa per feed"
+msgstr ""
+
+#: templates/settings-page.php:110
+msgid "Non creare categorie"
+msgstr ""
+
+#: templates/settings-page.php:113
+msgid "Scegli come creare le categorie per i post importati."
+msgstr ""
+
+#: templates/settings-page.php:120
+msgid "Metodo creazione tag"
+msgstr ""
+
+#: templates/settings-page.php:124
+msgid "Automatico da parole chiave"
+msgstr ""
+
+#: templates/settings-page.php:127
+msgid "Da parole chiave del feed"
+msgstr ""
+
+#: templates/settings-page.php:130
+msgid "Non creare tag"
+msgstr ""
+
+#: templates/settings-page.php:133
+msgid "Scegli come creare i tag per i post importati."
+msgstr ""
+
+#: templates/settings-page.php:142
+msgid "Gestione Media e Contenuto"
+msgstr ""
+
+#: templates/settings-page.php:147
+msgid "Importazione immagini"
+msgstr ""
+
+#: templates/settings-page.php:152
+msgid "Importa e salva immagini localmente"
+msgstr ""
+
+#: templates/settings-page.php:155
+msgid "Se abilitato, le immagini dei post verranno scaricate e salvate nella libreria media di WordPress."
+msgstr ""
+
+#: templates/settings-page.php:157
+msgid "Attenzione:"
+msgstr ""
+
+#: templates/settings-page.php:158
+msgid "Questa opzione può rallentare significativamente l'importazione e occupare spazio sul server."
+msgstr ""
+
+#: templates/settings-page.php:167
+msgid "Impostazioni Programmazione"
+msgstr ""
+
+#: templates/settings-page.php:172
+msgid "Stato Cron WordPress"
+msgstr ""
+
+#: templates/settings-page.php:177
+msgid "Disabilitato"
+msgstr ""
+
+#: templates/settings-page.php:179
+msgid "Il cron di WordPress è disabilitato. Le importazioni programmate non funzioneranno automaticamente."
+msgstr ""
+
+#: templates/settings-page.php:181
+msgid "Configura un cron job del server per eseguire: "
+msgstr ""
+
+#: templates/settings-page.php:184
+msgid "Il cron di WordPress è attivo. Le importazioni programmate verranno eseguite automaticamente."
+msgstr ""
+
+#: templates/settings-page.php:191
+msgid "Prossime esecuzioni programmate"
+msgstr ""
+
+#: templates/settings-page.php:197
+msgid "Prossima esecuzione automatica prevista per %s"
+msgstr ""
+
+#: templates/settings-page.php:201
+msgid "Nessuna esecuzione programmata"
+msgstr ""
+
+#: templates/settings-page.php:210
+msgid "Debug e Diagnostica"
+msgstr ""
+
+#: templates/settings-page.php:215
+msgid "Informazioni Sistema"
+msgstr ""
+
+#: templates/settings-page.php:218
+msgid "Versione PHP:"
+msgstr ""
+
+#: templates/settings-page.php:219
+msgid "Versione WordPress:"
+msgstr ""
+
+#: templates/settings-page.php:220
+msgid "Memory Limit:"
+msgstr ""
+
+#: templates/settings-page.php:221
+msgid "Max Execution Time:"
+msgstr ""
+
+#: templates/settings-page.php:222
+msgid "Funzioni necessarie:"
+msgstr ""
+
+#: templates/settings-page.php:232
+msgid "Tutte disponibili"
+msgstr ""
+
+#: templates/settings-page.php:234
+msgid "Mancanti:"
+msgstr ""
+
+#: templates/settings-page.php:242
+msgid "Test Connessione Feed"
+msgstr ""
+
+#: templates/settings-page.php:245
+msgid "Inserisci URL feed di test"
+msgstr ""
+
+#: templates/settings-page.php:246
+msgid "Testa Connessione"
+msgstr ""
+
+#: templates/settings-page.php:250
+msgid "Testa la connessione a un feed RSS per verificare che il server possa raggiungere URLs esterni."
+msgstr ""
+
+#: templates/settings-page.php:256
+msgid "Azioni Manutenzione"
+msgstr ""
+
+#: templates/settings-page.php:259
+msgid "Pulisci Log Importazioni Vecchie"
+msgstr ""
+
+#: templates/settings-page.php:260
+msgid "Reset Statistiche Feed"
+msgstr ""
+
+#: templates/settings-page.php:261
+msgid "Esegui Importazione Ora"
+msgstr ""
+
+#: templates/settings-page.php:264
+msgid "Azioni per la manutenzione e la risoluzione di problemi del plugin."
+msgstr ""
+
+#: templates/settings-page.php:272
+msgid "Impostazioni Sicurezza"
+msgstr ""
+
+#: templates/settings-page.php:277
+msgid "Filtri Contenuto"
+msgstr ""
+
+#: templates/settings-page.php:282
+msgid "Rimuovi shortcode dal contenuto importato"
+msgstr ""
+
+#: templates/settings-page.php:287
+msgid "Sanitizza HTML potenzialmente pericoloso"
+msgstr ""
+
+#: templates/settings-page.php:292
+msgid "Aggiungi rel=\"nofollow\" ai link esterni"
+msgstr ""
+
+#: templates/settings-page.php:296
+msgid "Filtri di sicurezza applicati al contenuto importato per proteggere il sito."
+msgstr ""
+
+#: templates/settings-page.php:303
+msgid "Salva Impostazioni"
+msgstr ""
+
+#: templates/settings-page.php:304
+msgid "Ripristina Predefinite"
+msgstr ""
+
+#: templates/settings-page.php:311
+msgid "Supporto e Documentazione"
+msgstr ""
+
+#: templates/settings-page.php:314
+msgid "Documentazione"
+msgstr ""
+
+#: templates/settings-page.php:315
+msgid "Consulta la documentazione completa per guide dettagliate e risoluzione problemi."
+msgstr ""
+
+#: templates/settings-page.php:316
+msgid "Vai alla Documentazione"
+msgstr ""
+
+#: templates/settings-page.php:320
+msgid "Supporto Tecnico"
+msgstr ""
+
+#: templates/settings-page.php:321
+msgid "Hai problemi? Contatta il supporto tecnico per assistenza personalizzata."
+msgstr ""
+
+#: templates/settings-page.php:322
+msgid "Richiedi Supporto"
+msgstr ""
+
+#: templates/settings-page.php:326
+msgid "Valutazione Plugin"
+msgstr ""
+
+#: templates/settings-page.php:327
+msgid "Se il plugin ti è utile, lascia una recensione positiva!"
+msgstr ""
+
+#: templates/settings-page.php:328
+msgid "Lascia Recensione"
+msgstr ""
+
+# Messaggi di errore e successo
+msgid "Feed aggiornato con successo!"
+msgstr ""
+
+msgid "Feed creato con successo!"
+msgstr ""
+
+msgid "Impostazioni salvate con successo!"
+msgstr ""
+
+msgid "URL non valido"
+msgstr ""
+
+msgid "Impossibile raggiungere l'URL: "
+msgstr ""
+
+msgid "Il contenuto non è un feed RSS valido"
+msgstr ""
+
+msgid "Feed RSS valido con %d elementi"
+msgstr ""
+
+msgid "Titolo non disponibile"
+msgstr ""
+
+msgid "Feed non trovato"
+msgstr ""
+
+msgid "Feed eliminato con successo!"
+msgstr ""
+
+msgid "Errore durante l'eliminazione del feed"
+msgstr ""
+
+msgid "Importati %d post su %d elaborati"
+msgstr ""
+
+msgid "Errori: "
+msgstr ""
+
+msgid "Post duplicato: %s"
+msgstr ""
+
+msgid "Errore creazione post: %s"
+msgstr ""
+
+msgid "Post importato: %s"
+msgstr ""
+
+# Messaggi JavaScript
+msgid "Validazione in corso..."
+msgstr ""
+
+msgid "Importazione in corso..."
+msgstr ""
+
+msgid "Operazione completata con successo!"
+msgstr ""
+
+msgid "Errore durante l'operazione"
+msgstr ""
+
+msgid "Sei sicuro di voler eliminare questo feed?"
+msgstr ""
+
+# Log e debug
+msgid "Permessi insufficienti"
+msgstr ""
+
+msgid "Azione non riconosciuta"
+msgstr ""
+
+msgid "Errore durante la pulizia dei log"
+msgstr ""
+
+msgid "Eliminati %d log di importazione"
+msgstr ""
+
+msgid "Errore durante il reset delle statistiche"
+msgstr ""
+
+msgid "Statistiche reimpostate con successo"
+msgstr ""
+
+msgid "Importazione programmata eseguita con successo"
+msgstr ""
+
+msgid "Errore durante l'esecuzione: %s"
+msgstr ""
+
+msgid "Nessun post selezionato"
+msgstr ""
+
+msgid "Errore sul post ID %d"
+msgstr ""
+
+msgid "%d post aggiornati con successo, %d errori"
+msgstr ""
+
+msgid "Formato non supportato"
+msgstr ""
+
+msgid "Nessun dato da esportare"
+msgstr ""
+
+msgid "Feed RSS non valido"
+msgstr ""
