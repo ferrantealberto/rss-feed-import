@@ -18,6 +18,7 @@ jQuery(document).ready(function($) {
         bindEvents();
         setupFormValidation();
         initializeDataTables();
+        initializeMediaUploader();
     }
     
     function bindEvents() {
@@ -49,6 +50,9 @@ jQuery(document).ready(function($) {
         
         // Checkbox "seleziona tutto"
         $('#cb-select-all-1').on('change', handleSelectAll);
+        
+        // Toggle importazione immagini
+        $('#image_import').on('change', handleImageImportToggle);
     }
     
     function setupFormValidation() {
@@ -79,6 +83,82 @@ jQuery(document).ready(function($) {
             $('.wp-list-table th').on('click', function() {
                 // Implementa ordinamento personalizzato se necessario
             });
+        }
+    }
+    
+    /**
+     * Inizializza il media uploader per l'immagine predefinita
+     */
+    function initializeMediaUploader() {
+        var defaultImageFrame;
+        
+        // Gestione selezione immagine predefinita
+        $(document).on('click', '#select_default_image', function(e) {
+            e.preventDefault();
+            
+            if (defaultImageFrame) {
+                defaultImageFrame.open();
+                return;
+            }
+            
+            defaultImageFrame = wp.media({
+                title: 'Seleziona immagine predefinita',
+                button: {
+                    text: 'Usa questa immagine'
+                },
+                multiple: false,
+                library: {
+                    type: 'image'
+                }
+            });
+            
+            defaultImageFrame.on('select', function() {
+                var attachment = defaultImageFrame.state().get('selection').first().toJSON();
+                
+                $('#default_featured_image').val(attachment.id);
+                
+                var imgUrl = attachment.sizes && attachment.sizes.medium ? 
+                           attachment.sizes.medium.url : attachment.url;
+                
+                var imgHtml = '<img src="' + imgUrl + '" style="max-width: 200px; height: auto; border: 1px solid #ddd; padding: 5px;" id="default-image-preview">';
+                imgHtml += '<br><button type="button" class="button" id="remove_default_image" style="margin-top: 5px;">Rimuovi immagine</button>';
+                
+                $('.default-image-preview').html(imgHtml).show();
+                $('#select_default_image').text('Cambia immagine');
+                
+                showNotice('Immagine predefinita aggiornata con successo.', 'success');
+            });
+            
+            defaultImageFrame.open();
+        });
+        
+        // Gestione rimozione immagine predefinita
+        $(document).on('click', '#remove_default_image', function(e) {
+            e.preventDefault();
+            
+            if (confirm('Sei sicuro di voler rimuovere l\'immagine predefinita?')) {
+                $('#default_featured_image').val('');
+                $('.default-image-preview').html('<div id="default-image-preview" style="display: none;"></div>').hide();
+                $('#select_default_image').text('Seleziona immagine');
+                
+                showNotice('Immagine predefinita rimossa.', 'info');
+            }
+        });
+    }
+    
+    /**
+     * Gestisce il toggle dell'importazione immagini
+     */
+    function handleImageImportToggle() {
+        var isEnabled = $(this).is(':checked');
+        var defaultImageSection = $('.default-image-wrapper').closest('tr');
+        
+        if (isEnabled) {
+            defaultImageSection.show();
+            showNotice('Importazione immagini abilitata. Configura un\'immagine predefinita come fallback.', 'info');
+        } else {
+            defaultImageSection.hide();
+            showNotice('Importazione immagini disabilitata.', 'info');
         }
     }
     
@@ -198,7 +278,14 @@ jQuery(document).ready(function($) {
                 hideLoading();
                 
                 if (response.success) {
-                    showNotice(response.data.message, 'success');
+                    var message = response.data.message;
+                    
+                    // Aggiungi informazioni sulle immagini se disponibili
+                    if (response.data.images_imported !== undefined) {
+                        message += '<br><strong>Immagini importate:</strong> ' + response.data.images_imported;
+                    }
+                    
+                    showNotice(message, 'success');
                     
                     // Aggiorna le statistiche nella riga
                     updateFeedRow(feedId, response.data);
@@ -256,7 +343,8 @@ jQuery(document).ready(function($) {
                     results.push({
                         feedId: feedId,
                         success: response.success,
-                        message: response.data ? response.data.message : 'Errore sconosciuto'
+                        message: response.data ? response.data.message : 'Errore sconosciuto',
+                        images_imported: response.data ? response.data.images_imported : 0
                     });
                     
                     // Importa il prossimo feed
@@ -269,7 +357,8 @@ jQuery(document).ready(function($) {
                     results.push({
                         feedId: feedId,
                         success: false,
-                        message: 'Errore di connessione: ' + error
+                        message: 'Errore di connessione: ' + error,
+                        images_imported: 0
                     });
                     
                     // Continua con il prossimo feed anche in caso di errore
@@ -286,10 +375,12 @@ jQuery(document).ready(function($) {
     function showImportSummary(results) {
         var successCount = results.filter(r => r.success).length;
         var errorCount = results.length - successCount;
+        var totalImages = results.reduce((sum, r) => sum + (r.images_imported || 0), 0);
         
         var message = 'Importazione completata!<br>';
         message += 'Successi: ' + successCount + '<br>';
-        message += 'Errori: ' + errorCount;
+        message += 'Errori: ' + errorCount + '<br>';
+        message += 'Immagini importate: ' + totalImages;
         
         if (errorCount > 0) {
             message += '<br><br>Dettagli errori:';
@@ -689,7 +780,15 @@ jQuery(document).ready(function($) {
         $('#category_creation_method').val('auto');
         $('#tag_creation_method').val('auto');
         $('#image_import').prop('checked', true);
+        $('#default_featured_image').val('0');
         $('#excerpt_length').val('150');
+        
+        // Aggiorna l'anteprima dell'immagine predefinita
+        $('.default-image-preview').html('<div id="default-image-preview" style="display: none;"></div>').hide();
+        $('#select_default_image').text('Seleziona immagine');
+        
+        // Mostra/nascondi sezione immagine predefinita in base al toggle
+        handleImageImportToggle.call($('#image_import')[0]);
     }
     
     function escapeHtml(text) {
@@ -729,6 +828,7 @@ jQuery(document).ready(function($) {
             '<div class="no-feeds-message" style="text-align: center; padding: 20px; color: #666;">' +
             '<p style="font-size: 16px;">🚀 Inizia aggiungendo il tuo primo feed RSS!</p>' +
             '<p>Compila il modulo sopra per iniziare a importare contenuti automaticamente.</p>' +
+            '<p><small>💡 Suggerimento: Abilita l\'importazione immagini nelle impostazioni per ottenere immagini in evidenza automatiche!</small></p>' +
             '</div>'
         );
     }
@@ -743,5 +843,10 @@ jQuery(document).ready(function($) {
         $(this).attr('title', $(this).data('tooltip'));
     });
     
-    console.log('RSS Feed Importer Admin JS initialized successfully');
+    // Inizializza il toggle dell'importazione immagini se presente
+    if ($('#image_import').length > 0) {
+        handleImageImportToggle.call($('#image_import')[0]);
+    }
+    
+    console.log('RSS Feed Importer Admin JS initialized successfully with image support');
 });

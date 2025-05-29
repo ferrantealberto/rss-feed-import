@@ -150,7 +150,9 @@ function rss_importer_clean_post_meta() {
         'rss_importer_import_date',
         'rss_importer_original_title',
         'rss_importer_categories_created',
-        'rss_importer_tags_created'
+        'rss_importer_tags_created',
+        'rss_importer_featured_image_imported',
+        'rss_importer_featured_image_url'
     );
     
     $deleted_count = 0;
@@ -254,6 +256,34 @@ function rss_importer_delete_imported_posts() {
 }
 
 /**
+ * Pulisce le immagini importate dalla libreria media (opzionale)
+ */
+function rss_importer_clean_imported_images() {
+    global $wpdb;
+    
+    // ATTENZIONE: Questa funzione eliminerà tutte le immagini importate dal plugin!
+    // Usare con estrema cautela!
+    
+    /*
+    // Trova tutti gli attachment importati dal plugin
+    $imported_images = $wpdb->get_col(
+        "SELECT ID FROM {$wpdb->posts} 
+         WHERE post_type = 'attachment' 
+         AND post_title LIKE 'rss-import-%'"
+    );
+    
+    $deleted_count = 0;
+    foreach ($imported_images as $attachment_id) {
+        if (wp_delete_attachment($attachment_id, true)) {
+            $deleted_count++;
+        }
+    }
+    
+    error_log("RSS Feed Importer: Eliminate $deleted_count immagini importate");
+    */
+}
+
+/**
  * Funzione per backup dei dati prima della disinstallazione (opzionale)
  */
 function rss_importer_backup_before_uninstall() {
@@ -284,10 +314,12 @@ function rss_importer_export_feeds_data() {
     
     $feeds = $wpdb->get_results("SELECT * FROM $table_feeds", ARRAY_A);
     $imports_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_imports");
+    $images_imported = $wpdb->get_var("SELECT COUNT(*) FROM $table_imports WHERE featured_image_imported = 1");
     
     return array(
         'feeds' => $feeds,
-        'total_imports' => $imports_count
+        'total_imports' => $imports_count,
+        'images_imported' => $images_imported
     );
 }
 
@@ -305,6 +337,11 @@ Dati rimossi:
 - Cron jobs programmati
 - Metadati dei post
 - File di cache
+- Tracciamento immagini importate
+
+NOTA: Le immagini importate nella libreria media NON sono state eliminate
+automaticamente per sicurezza. Se desideri rimuoverle, dovrai farlo manualmente
+cercando gli attachment con titolo che inizia con 'rss-import-'.
 
 Se hai bisogno di reinstallare il plugin in futuro, 
 tutti i dati dovranno essere riconfigurati da zero.
@@ -321,6 +358,9 @@ try {
     
     // Esegui la disinstallazione completa
     rss_importer_uninstall();
+    
+    // Opzionalmente pulisci anche le immagini importate
+    // rss_importer_clean_imported_images();
     
     // Mostra messaggio di conferma
     rss_importer_show_uninstall_message();

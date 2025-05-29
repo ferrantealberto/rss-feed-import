@@ -30,6 +30,20 @@ define('RSS_IMPORTER_ALLOWED_HTML_TAGS', array(
     'ul', 'ol', 'li', 'blockquote', 'a', 'img'
 ));
 
+// Configurazioni immagini
+define('RSS_IMPORTER_IMAGE_MAX_SIZE', 5242880); // 5MB
+define('RSS_IMPORTER_IMAGE_MAX_WIDTH', 1920);
+define('RSS_IMPORTER_IMAGE_MAX_HEIGHT', 1080);
+define('RSS_IMPORTER_IMAGE_QUALITY', 85);
+define('RSS_IMPORTER_SUPPORTED_IMAGE_TYPES', array(
+    'image/jpeg',
+    'image/jpg', 
+    'image/png',
+    'image/gif',
+    'image/webp'
+));
+define('RSS_IMPORTER_IMAGE_TIMEOUT', 30); // Timeout download immagini
+
 // Configurazioni email
 define('RSS_IMPORTER_EMAIL_NOTIFICATIONS', false);
 define('RSS_IMPORTER_EMAIL_FREQUENCY', 'daily');
@@ -80,6 +94,8 @@ define('RSS_IMPORTER_HOOK_BEFORE_IMPORT', 'rss_importer_before_import');
 define('RSS_IMPORTER_HOOK_AFTER_IMPORT', 'rss_importer_after_import');
 define('RSS_IMPORTER_HOOK_POST_CREATED', 'rss_importer_post_created');
 define('RSS_IMPORTER_HOOK_IMPORT_ERROR', 'rss_importer_import_error');
+define('RSS_IMPORTER_HOOK_IMAGE_IMPORTED', 'rss_importer_image_imported');
+define('RSS_IMPORTER_HOOK_IMAGE_FAILED', 'rss_importer_image_failed');
 
 // Filtri personalizzati
 define('RSS_IMPORTER_FILTER_POST_TITLE', 'rss_importer_post_title');
@@ -87,6 +103,8 @@ define('RSS_IMPORTER_FILTER_POST_CONTENT', 'rss_importer_post_content');
 define('RSS_IMPORTER_FILTER_POST_STATUS', 'rss_importer_post_status');
 define('RSS_IMPORTER_FILTER_CATEGORIES', 'rss_importer_categories');
 define('RSS_IMPORTER_FILTER_TAGS', 'rss_importer_tags');
+define('RSS_IMPORTER_FILTER_IMAGE_URL', 'rss_importer_image_url');
+define('RSS_IMPORTER_FILTER_IMAGE_SIZE', 'rss_importer_image_size');
 
 // Configurazioni performance
 define('RSS_IMPORTER_MEMORY_LIMIT', '256M');
@@ -108,6 +126,7 @@ function rss_importer_get_default_settings() {
         'category_creation_method' => 'auto',
         'tag_creation_method' => 'auto',
         'image_import' => 1,
+        'default_featured_image' => 0,
         'excerpt_length' => 150,
         'timeout' => RSS_IMPORTER_DEFAULT_TIMEOUT,
         'user_agent_rotation' => true,
@@ -120,7 +139,9 @@ function rss_importer_get_default_settings() {
         'limit_external_links' => false,
         'max_auto_categories' => RSS_IMPORTER_MAX_AUTO_CATEGORIES,
         'max_auto_tags' => RSS_IMPORTER_MAX_AUTO_TAGS,
-        'min_keyword_length' => RSS_IMPORTER_MIN_KEYWORD_LENGTH
+        'min_keyword_length' => RSS_IMPORTER_MIN_KEYWORD_LENGTH,
+        'image_max_size' => RSS_IMPORTER_IMAGE_MAX_SIZE,
+        'image_quality' => RSS_IMPORTER_IMAGE_QUALITY
     );
 }
 
@@ -148,6 +169,14 @@ function rss_importer_is_supported_format($content_type) {
 }
 
 /**
+ * Funzione per verificare se un tipo di immagine è supportato
+ */
+function rss_importer_is_supported_image_type($mime_type) {
+    $supported_types = RSS_IMPORTER_SUPPORTED_IMAGE_TYPES;
+    return in_array($mime_type, $supported_types);
+}
+
+/**
  * Funzione per ottenere i limiti correnti del sistema
  */
 function rss_importer_get_system_limits() {
@@ -157,7 +186,10 @@ function rss_importer_get_system_limits() {
         'timeout' => RSS_IMPORTER_DEFAULT_TIMEOUT,
         'memory_limit' => wp_convert_hr_to_bytes(RSS_IMPORTER_MEMORY_LIMIT),
         'max_execution_time' => RSS_IMPORTER_MAX_EXECUTION_TIME,
-        'min_import_interval' => RSS_IMPORTER_MIN_IMPORT_INTERVAL
+        'min_import_interval' => RSS_IMPORTER_MIN_IMPORT_INTERVAL,
+        'image_max_size' => RSS_IMPORTER_IMAGE_MAX_SIZE,
+        'image_max_width' => RSS_IMPORTER_IMAGE_MAX_WIDTH,
+        'image_max_height' => RSS_IMPORTER_IMAGE_MAX_HEIGHT
     );
 }
 
@@ -192,8 +224,51 @@ function rss_importer_validate_settings($settings) {
         );
     }
     
+    // Valida default_featured_image
+    if (isset($settings['default_featured_image'])) {
+        $settings['default_featured_image'] = max(0, intval($settings['default_featured_image']));
+    }
+    
+    // Valida image_quality
+    if (isset($settings['image_quality'])) {
+        $settings['image_quality'] = min(
+            max(30, intval($settings['image_quality'])), 
+            100
+        );
+    }
+    
     // Merge con i defaults per i valori mancanti
     return array_merge($defaults, array_intersect_key($settings, $defaults));
+}
+
+/**
+ * Funzione per ottenere l'estensione corretta per un tipo MIME
+ */
+function rss_importer_get_image_extension($mime_type) {
+    $extensions = array(
+        'image/jpeg' => 'jpg',
+        'image/jpg' => 'jpg',
+        'image/png' => 'png',
+        'image/gif' => 'gif',
+        'image/webp' => 'webp'
+    );
+    
+    return isset($extensions[$mime_type]) ? $extensions[$mime_type] : 'jpg';
+}
+
+/**
+ * Funzione per generare un nome file univoco per le immagini importate
+ */
+function rss_importer_generate_image_filename($post_id, $original_url = '', $extension = 'jpg') {
+    $timestamp = time();
+    $random = wp_rand(1000, 9999);
+    
+    if ($original_url) {
+        $url_hash = substr(md5($original_url), 0, 8);
+        return sprintf('rss-import-%d-%s-%d-%d.%s', $post_id, $url_hash, $timestamp, $random, $extension);
+    }
+    
+    return sprintf('rss-import-%d-%d-%d.%s', $post_id, $timestamp, $random, $extension);
 }
 
 /**
@@ -212,8 +287,95 @@ function rss_importer_get_debug_info() {
         'curl_version' => curl_version()['version'] ?? 'N/A',
         'simplexml_loaded' => extension_loaded('simplexml'),
         'json_loaded' => extension_loaded('json'),
+        'gd_loaded' => extension_loaded('gd'),
+        'imagick_loaded' => extension_loaded('imagick'),
         'wp_cron_disabled' => defined('DISABLE_WP_CRON') && DISABLE_WP_CRON,
         'wp_debug' => defined('WP_DEBUG') && WP_DEBUG,
-        'wp_cache' => defined('WP_CACHE') && WP_CACHE
+        'wp_cache' => defined('WP_CACHE') && WP_CACHE,
+        'image_limits' => array(
+            'max_size' => size_format(RSS_IMPORTER_IMAGE_MAX_SIZE),
+            'max_width' => RSS_IMPORTER_IMAGE_MAX_WIDTH . 'px',
+            'max_height' => RSS_IMPORTER_IMAGE_MAX_HEIGHT . 'px',
+            'supported_types' => RSS_IMPORTER_SUPPORTED_IMAGE_TYPES
+        )
     );
+}
+
+/**
+ * Funzione per verificare se il sistema supporta l'elaborazione immagini
+ */
+function rss_importer_check_image_support() {
+    $requirements = array();
+    
+    // Verifica GD
+    $requirements['gd'] = array(
+        'required' => true,
+        'available' => extension_loaded('gd'),
+        'description' => 'Libreria GD per elaborazione immagini'
+    );
+    
+    // Verifica ImageMagick (opzionale)
+    $requirements['imagick'] = array(
+        'required' => false,
+        'available' => extension_loaded('imagick'),
+        'description' => 'ImageMagick per elaborazione avanzata immagini'
+    );
+    
+    // Verifica funzioni WordPress
+    $requirements['wp_image_editor'] = array(
+        'required' => true,
+        'available' => function_exists('wp_get_image_editor'),
+        'description' => 'WordPress Image Editor'
+    );
+    
+    // Verifica directory upload
+    $upload_dir = wp_upload_dir();
+    $requirements['upload_writable'] = array(
+        'required' => true,
+        'available' => is_writable($upload_dir['path']),
+        'description' => 'Directory upload scrivibile'
+    );
+    
+    return $requirements;
+}
+
+/**
+ * Funzione per ottenere le statistiche delle immagini
+ */
+function rss_importer_get_image_stats() {
+    global $wpdb;
+    
+    $table_imports = $wpdb->prefix . RSS_IMPORTER_TABLE_IMPORTS;
+    
+    $stats = array();
+    
+    // Numero totale di immagini importate
+    $stats['total_images_imported'] = $wpdb->get_var(
+        "SELECT COUNT(*) FROM $table_imports WHERE featured_image_imported = 1"
+    );
+    
+    // Numero di post con immagini predefinite
+    $stats['default_images_used'] = $wpdb->get_var(
+        "SELECT COUNT(*) FROM $table_imports WHERE featured_image_imported = 1 AND featured_image_url = 'default'"
+    );
+    
+    // Numero di post senza immagini
+    $stats['posts_without_images'] = $wpdb->get_var(
+        "SELECT COUNT(*) FROM $table_imports WHERE featured_image_imported = 0"
+    );
+    
+    // Immagini importate oggi
+    $stats['images_imported_today'] = $wpdb->get_var(
+        "SELECT COUNT(*) FROM $table_imports WHERE featured_image_imported = 1 AND DATE(import_date) = CURDATE()"
+    );
+    
+    // Percentuale di successo importazione immagini
+    $total_imports = $wpdb->get_var("SELECT COUNT(*) FROM $table_imports");
+    if ($total_imports > 0) {
+        $stats['success_rate'] = round(($stats['total_images_imported'] / $total_imports) * 100, 1);
+    } else {
+        $stats['success_rate'] = 0;
+    }
+    
+    return $stats;
 }

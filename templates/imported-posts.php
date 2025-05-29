@@ -39,10 +39,10 @@ if (!defined('ABSPATH')) {
                 </div>
                 <div class="stat-box">
                     <h3><?php 
-                        $error_imports = $wpdb->get_var("SELECT COUNT(*) FROM $table_imports WHERE status = 'error'");
-                        echo number_format_i18n($error_imports);
+                        $images_imported = $wpdb->get_var("SELECT COUNT(*) FROM $table_imports WHERE featured_image_imported = 1");
+                        echo number_format_i18n($images_imported);
                     ?></h3>
-                    <p><?php _e('Errori', 'rss-feed-importer'); ?></p>
+                    <p><?php _e('Immagini Importate', 'rss-feed-importer'); ?></p>
                 </div>
             </div>
         </div>
@@ -72,6 +72,13 @@ if (!defined('ABSPATH')) {
                         <option value="success" <?php selected(isset($_GET['filter_status']) ? $_GET['filter_status'] : '', 'success'); ?>><?php _e('Successo', 'rss-feed-importer'); ?></option>
                         <option value="error" <?php selected(isset($_GET['filter_status']) ? $_GET['filter_status'] : '', 'error'); ?>><?php _e('Errore', 'rss-feed-importer'); ?></option>
                         <option value="duplicate" <?php selected(isset($_GET['filter_status']) ? $_GET['filter_status'] : '', 'duplicate'); ?>><?php _e('Duplicato', 'rss-feed-importer'); ?></option>
+                    </select>
+                    
+                    <label for="filter_image"><?php _e('Immagine:', 'rss-feed-importer'); ?></label>
+                    <select name="filter_image" id="filter_image">
+                        <option value=""><?php _e('Tutte', 'rss-feed-importer'); ?></option>
+                        <option value="1" <?php selected(isset($_GET['filter_image']) ? $_GET['filter_image'] : '', '1'); ?>><?php _e('Con immagine', 'rss-feed-importer'); ?></option>
+                        <option value="0" <?php selected(isset($_GET['filter_image']) ? $_GET['filter_image'] : '', '0'); ?>><?php _e('Senza immagine', 'rss-feed-importer'); ?></option>
                     </select>
                     
                     <label for="filter_date_from"><?php _e('Dal:', 'rss-feed-importer'); ?></label>
@@ -119,6 +126,7 @@ if (!defined('ABSPATH')) {
                                 <input id="cb-select-all-1" type="checkbox">
                             </td>
                             <th scope="col" class="manage-column column-title column-primary"><?php _e('Titolo', 'rss-feed-importer'); ?></th>
+                            <th scope="col" class="manage-column column-image"><?php _e('Immagine', 'rss-feed-importer'); ?></th>
                             <th scope="col" class="manage-column column-feed"><?php _e('Feed', 'rss-feed-importer'); ?></th>
                             <th scope="col" class="manage-column column-post-status"><?php _e('Stato Post', 'rss-feed-importer'); ?></th>
                             <th scope="col" class="manage-column column-import-status"><?php _e('Stato Importazione', 'rss-feed-importer'); ?></th>
@@ -163,6 +171,50 @@ if (!defined('ABSPATH')) {
                                         <small class="error"><?php _e('Post non più disponibile', 'rss-feed-importer'); ?></small>
                                     <?php endif; ?>
                                 </td>
+                                <td class="column-image">
+                                    <?php
+                                    $has_featured_image = false;
+                                    $image_html = '';
+                                    $image_source = '';
+                                    
+                                    if ($import->post_id && get_post($import->post_id)) {
+                                        $thumbnail_id = get_post_thumbnail_id($import->post_id);
+                                        if ($thumbnail_id) {
+                                            $has_featured_image = true;
+                                            $image_url = wp_get_attachment_image_url($thumbnail_id, 'thumbnail');
+                                            $image_html = '<img src="' . esc_url($image_url) . '" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;" title="Immagine in evidenza">';
+                                            
+                                            // Determina la fonte dell'immagine
+                                            if ($import->featured_image_imported) {
+                                                if ($import->featured_image_url === 'default') {
+                                                    $image_source = '<small style="color: #666;">Predefinita</small>';
+                                                } else {
+                                                    $image_source = '<small style="color: #2271b1;">Importata</small>';
+                                                }
+                                            } else {
+                                                $image_source = '<small style="color: #666;">Manuale</small>';
+                                            }
+                                        }
+                                    }
+                                    
+                                    if ($has_featured_image):
+                                    ?>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <?php echo $image_html; ?>
+                                            <div>
+                                                <span class="dashicons dashicons-yes-alt" style="color: #46b450; font-size: 16px;" title="Immagine presente"></span>
+                                                <br>
+                                                <?php echo $image_source; ?>
+                                            </div>
+                                        </div>
+                                    <?php else: ?>
+                                        <div style="text-align: center;">
+                                            <span class="dashicons dashicons-no-alt" style="color: #dc3232; font-size: 20px;" title="Nessuna immagine"></span>
+                                            <br>
+                                            <small style="color: #dc3232;">Nessuna</small>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
                                 <td class="column-feed">
                                     <strong><?php echo esc_html($import->feed_name); ?></strong>
                                 </td>
@@ -199,6 +251,21 @@ if (!defined('ABSPATH')) {
                                         <br><small class="error-message" title="<?php echo esc_attr($import->error_message); ?>">
                                             <?php echo esc_html(wp_trim_words($import->error_message, 8)); ?>
                                         </small>
+                                    <?php endif; ?>
+                                    
+                                    <?php if ($import->status === 'success'): ?>
+                                        <br>
+                                        <?php if ($import->featured_image_imported): ?>
+                                            <small style="color: #46b450;" title="Immagine importata con successo">
+                                                <span class="dashicons dashicons-format-image" style="font-size: 12px;"></span> 
+                                                <?php echo $import->featured_image_url === 'default' ? 'Predefinita' : 'Importata'; ?>
+                                            </small>
+                                        <?php else: ?>
+                                            <small style="color: #dba617;" title="Immagine non importata">
+                                                <span class="dashicons dashicons-format-image" style="font-size: 12px; opacity: 0.5;"></span> 
+                                                No img
+                                            </small>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </td>
                                 <td class="column-date">
@@ -272,7 +339,7 @@ if (!defined('ABSPATH')) {
         <!-- Sezione esportazione dati -->
         <div class="rss-importer-export-section">
             <h3><?php _e('Esporta Dati', 'rss-feed-importer'); ?></h3>
-            <p><?php _e('Esporta l\'elenco completo dei post importati in formato CSV per analisi o backup.', 'rss-feed-importer'); ?></p>
+            <p><?php _e('Esporta l\'elenco completo dei post importati in formato CSV o JSON per analisi o backup.', 'rss-feed-importer'); ?></p>
             <form method="post" action="">
                 <?php wp_nonce_field('export_imports', 'rss_importer_nonce'); ?>
                 <input type="hidden" name="export_imports" value="1">
@@ -293,6 +360,77 @@ if (!defined('ABSPATH')) {
                 
                 <input type="submit" class="button" value="<?php _e('Esporta', 'rss-feed-importer'); ?>">
             </form>
+            
+            <div style="margin-top: 15px; padding: 10px; background: #f0f6fc; border-left: 4px solid #2271b1; font-size: 13px;">
+                <strong><?php _e('Nota:', 'rss-feed-importer'); ?></strong> 
+                <?php _e('I dati esportati includeranno informazioni sulle immagini importate e i loro URL originali.', 'rss-feed-importer'); ?>
+            </div>
+        </div>
+        
+        <!-- Legenda immagini -->
+        <div class="rss-importer-export-section">
+            <h3><?php _e('Legenda Immagini', 'rss-feed-importer'); ?></h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="dashicons dashicons-yes-alt" style="color: #46b450; font-size: 18px;"></span>
+                    <div>
+                        <strong><?php _e('Immagine presente', 'rss-feed-importer'); ?></strong>
+                        <br><small><?php _e('Post ha immagine in evidenza', 'rss-feed-importer'); ?></small>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="dashicons dashicons-no-alt" style="color: #dc3232; font-size: 18px;"></span>
+                    <div>
+                        <strong><?php _e('Nessuna immagine', 'rss-feed-importer'); ?></strong>
+                        <br><small><?php _e('Post senza immagine in evidenza', 'rss-feed-importer'); ?></small>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <small style="color: #2271b1; font-weight: bold;">Importata</small>
+                    <div>
+                        <strong><?php _e('Dal feed RSS', 'rss-feed-importer'); ?></strong>
+                        <br><small><?php _e('Immagine scaricata dal feed originale', 'rss-feed-importer'); ?></small>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <small style="color: #666; font-weight: bold;">Predefinita</small>
+                    <div>
+                        <strong><?php _e('Immagine di fallback', 'rss-feed-importer'); ?></strong>
+                        <br><small><?php _e('Usata quando importazione fallisce', 'rss-feed-importer'); ?></small>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<style>
+/* Stili aggiuntivi per la gestione immagini */
+.column-image {
+    width: 80px !important;
+    text-align: center;
+}
+
+.import-status-badge {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 500;
+}
+
+.rss-importer-export-section:last-child {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+}
+
+.dashicons {
+    vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+    .column-image {
+        display: none;
+    }
+}
+</style>

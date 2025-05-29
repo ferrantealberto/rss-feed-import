@@ -164,15 +164,50 @@ if (!defined('ABSPATH')) {
                                 <label for="image_import">
                                     <input type="checkbox" name="image_import" id="image_import" value="1" 
                                            <?php checked($settings['image_import'], 1); ?>>
-                                    <?php _e('Importa e salva immagini localmente', 'rss-feed-importer'); ?>
+                                    <?php _e('Importa e salva immagini in evidenza localmente', 'rss-feed-importer'); ?>
                                 </label>
                                 <p class="description">
-                                    <?php _e('Se abilitato, le immagini dei post verranno scaricate e salvate nella libreria media di WordPress.', 'rss-feed-importer'); ?>
+                                    <?php _e('Se abilitato, le immagini in evidenza dei post verranno scaricate e salvate nella libreria media di WordPress.', 'rss-feed-importer'); ?>
                                     <br>
                                     <strong><?php _e('Attenzione:', 'rss-feed-importer'); ?></strong>
                                     <?php _e('Questa opzione può rallentare significativamente l\'importazione e occupare spazio sul server.', 'rss-feed-importer'); ?>
                                 </p>
                             </fieldset>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="default_featured_image"><?php _e('Immagine in evidenza predefinita', 'rss-feed-importer'); ?></label>
+                        </th>
+                        <td>
+                            <div class="default-image-wrapper">
+                                <input type="hidden" name="default_featured_image" id="default_featured_image" 
+                                       value="<?php echo esc_attr($settings['default_featured_image']); ?>">
+                                
+                                <div class="default-image-preview" style="margin-bottom: 10px;">
+                                    <?php
+                                    $default_image_id = $settings['default_featured_image'];
+                                    if ($default_image_id) {
+                                        $image_url = wp_get_attachment_image_url($default_image_id, 'medium');
+                                        if ($image_url) {
+                                            echo '<img src="' . esc_url($image_url) . '" style="max-width: 200px; height: auto; border: 1px solid #ddd; padding: 5px;" id="default-image-preview">';
+                                            echo '<br><button type="button" class="button" id="remove_default_image" style="margin-top: 5px;">' . __('Rimuovi immagine', 'rss-feed-importer') . '</button>';
+                                        }
+                                    } else {
+                                        echo '<div id="default-image-preview" style="display: none;"></div>';
+                                    }
+                                    ?>
+                                </div>
+                                
+                                <button type="button" class="button" id="select_default_image">
+                                    <?php echo $default_image_id ? __('Cambia immagine', 'rss-feed-importer') : __('Seleziona immagine', 'rss-feed-importer'); ?>
+                                </button>
+                                
+                                <p class="description">
+                                    <?php _e('Seleziona un\'immagine da utilizzare come immagine in evidenza predefinita quando non è possibile importare l\'immagine originale dal feed RSS.', 'rss-feed-importer'); ?>
+                                </p>
+                            </div>
                         </td>
                     </tr>
                 </table>
@@ -352,3 +387,53 @@ if (!defined('ABSPATH')) {
         </div>
     </div>
 </div>
+
+<script type="text/javascript">
+jQuery(document).ready(function($) {
+    // Media uploader per immagine predefinita
+    var defaultImageFrame;
+    
+    $('#select_default_image').on('click', function(e) {
+        e.preventDefault();
+        
+        if (defaultImageFrame) {
+            defaultImageFrame.open();
+            return;
+        }
+        
+        defaultImageFrame = wp.media({
+            title: '<?php _e('Seleziona immagine predefinita', 'rss-feed-importer'); ?>',
+            button: {
+                text: '<?php _e('Usa questa immagine', 'rss-feed-importer'); ?>'
+            },
+            multiple: false,
+            library: {
+                type: 'image'
+            }
+        });
+        
+        defaultImageFrame.on('select', function() {
+            var attachment = defaultImageFrame.state().get('selection').first().toJSON();
+            
+            $('#default_featured_image').val(attachment.id);
+            
+            var imgHtml = '<img src="' + attachment.sizes.medium.url + '" style="max-width: 200px; height: auto; border: 1px solid #ddd; padding: 5px;" id="default-image-preview">';
+            imgHtml += '<br><button type="button" class="button" id="remove_default_image" style="margin-top: 5px;"><?php _e('Rimuovi immagine', 'rss-feed-importer'); ?></button>';
+            
+            $('.default-image-preview').html(imgHtml).show();
+            $('#select_default_image').text('<?php _e('Cambia immagine', 'rss-feed-importer'); ?>');
+        });
+        
+        defaultImageFrame.open();
+    });
+    
+    // Rimuovi immagine predefinita
+    $(document).on('click', '#remove_default_image', function(e) {
+        e.preventDefault();
+        
+        $('#default_featured_image').val('');
+        $('.default-image-preview').html('<div id="default-image-preview" style="display: none;"></div>').hide();
+        $('#select_default_image').text('<?php _e('Seleziona immagine', 'rss-feed-importer'); ?>');
+    });
+});
+</script>

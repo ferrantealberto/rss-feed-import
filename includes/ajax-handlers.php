@@ -16,6 +16,8 @@ class RSSImporterAjaxHandlers {
         add_action('wp_ajax_rss_importer_bulk_action', array($this, 'handle_bulk_action'));
         add_action('wp_ajax_rss_importer_export_data', array($this, 'handle_export_data'));
         add_action('wp_ajax_rss_importer_get_feed_preview', array($this, 'handle_feed_preview'));
+        add_action('wp_ajax_rss_importer_test_image_import', array($this, 'handle_test_image_import'));
+        add_action('wp_ajax_rss_importer_regenerate_thumbnails', array($this, 'handle_regenerate_thumbnails'));
     }
     
     /**
@@ -41,6 +43,14 @@ class RSSImporterAjaxHandlers {
                 
             case 'force_cron':
                 $result = $this->force_cron_execution();
+                break;
+                
+            case 'clean_images':
+                $result = $this->clean_orphaned_images();
+                break;
+                
+            case 'optimize_images':
+                $result = $this->optimize_all_images();
                 break;
                 
             default:
@@ -127,6 +137,77 @@ class RSSImporterAjaxHandlers {
     }
     
     /**
+     * Pulisce le immagini orfane
+     */
+    private function clean_orphaned_images() {
+        global $wpdb;
+        
+        try {
+            // Trova attachment RSS Importer senza post associati
+            $orphaned_images = $wpdb->get_col(
+                "SELECT ID FROM {$wpdb->posts} 
+                 WHERE post_type = 'attachment' 
+                 AND post_title LIKE 'rss-import-%'
+                 AND post_parent NOT IN (
+                     SELECT ID FROM {$wpdb->posts} WHERE post_type = 'post'
+                 )"
+            );
+            
+            $deleted_count = 0;
+            foreach ($orphaned_images as $attachment_id) {
+                if (wp_delete_attachment($attachment_id, true)) {
+                    $deleted_count++;
+                }
+            }
+            
+            return array(
+                'success' => true,
+                'message' => sprintf(__('Eliminate %d immagini orfane', 'rss-feed-importer'), $deleted_count)
+            );
+            
+        } catch (Exception $e) {
+            return array(
+                'success' => false,
+                'message' => sprintf(__('Errore durante la pulizia: %s', 'rss-feed-importer'), $e->getMessage())
+            );
+        }
+    }
+    
+    /**
+     * Ottimizza tutte le immagini importate
+     */
+    private function optimize_all_images() {
+        global $wpdb;
+        
+        try {
+            // Trova tutte le immagini importate dal plugin
+            $rss_images = $wpdb->get_col(
+                "SELECT ID FROM {$wpdb->posts} 
+                 WHERE post_type = 'attachment' 
+                 AND post_title LIKE 'rss-import-%'"
+            );
+            
+            $optimized_count = 0;
+            foreach ($rss_images as $attachment_id) {
+                if (RSSImporterHelpers::optimize_image($attachment_id)) {
+                    $optimized_count++;
+                }
+            }
+            
+            return array(
+                'success' => true,
+                'message' => sprintf(__('Ottimizzate %d immagini', 'rss-feed-importer'), $optimized_count)
+            );
+            
+        } catch (Exception $e) {
+            return array(
+                'success' => false,
+                'message' => sprintf(__('Errore durante l\'ottimizzazione: %s', 'rss-feed-importer'), $e->getMessage())
+            );
+        }
+    }
+    
+    /**
      * Gestisce le azioni in blocco sui post
      */
     public function handle_bulk_action() {
@@ -195,9 +276,42 @@ class RSSImporterAjaxHandlers {
             case 'trash':
                 return wp_trash_post($post_id) !== false;
                 
+            case 'set_default_image':
+                return $this->set_default_image_for_post($post_id);
+                
+            case 'regenerate_thumbnails':
+                return $this->regenerate_post_thumbnail($post_id);
+                
             default:
                 return false;
         }
+    }
+    
+    /**
+     * Imposta l'immagine predefinita per un post
+     */
+    private function set_default_image_for_post($post_id) {
+        $settings = get_option('rss_importer_settings', array());
+        $default_image_id = isset($settings['default_featured_image']) ? $settings['default_featured_image'] : 0;
+        
+        if (!$default_image_id) {
+            return false;
+        }
+        
+        return RSSImporterHelpers::set_default_featured_image($post_id, $default_image_id);
+    }
+    
+    /**
+     * Rigenera le miniature per un post
+     */
+    private function regenerate_post_thumbnail($post_id) {
+        $thumbnail_id = get_post_thumbnail_id($post_id);
+        
+        if (!$thumbnail_id) {
+            return false;
+        }
+        
+        return RSSImporterHelpers::optimize_image($thumbnail_id);
     }
     
     /**
@@ -277,6 +391,8 @@ class RSSImporterAjaxHandlers {
                 i.status,
                 i.categories_created,
                 i.tags_created,
+                i.featured_image_imported,
+                i.featured_image_url,
                 p.post_title,
                 p.post_status,
                 p.post_date
@@ -312,7 +428,9 @@ class RSSImporterAjaxHandlers {
             'Stato Post',
             'Data Pubblicazione',
             'Categorie Create',
-            'Tag Creati'
+            'Tag Creati',
+            'Immagine Importata',
+            'URL Immagine Originale'
         ));
         
         // Dati
@@ -331,7 +449,9 @@ class RSSImporterAjaxHandlers {
                 $row['post_status'],
                 $row['post_date'],
                 is_array($categories) ? implode(', ', $categories) : '',
-                is_array($tags) ? implode(', ', $tags) : ''
+                is_array($tags) ? implode(', ', $tags) : '',
+                $row['featured_image_imported'] ? 'Sì' : 'No',
+                $row['featured_image_url'] ?: ''
             ));
         }
         
@@ -375,22 +495,120 @@ class RSSImporterAjaxHandlers {
         foreach ($items as $item) {
             if ($count >= $limit) break;
             
+            // Estrai informazioni immagine
+            $image_info = RSSImporterHelpers::extract_image_from_rss_item($item);
+            
             $preview_items[] = array(
                 'title' => (string)$item->title,
                 'link' => (string)$item->link,
                 'description' => wp_trim_words(strip_tags((string)$item->description), 20),
                 'pub_date' => (string)$item->pubDate,
-                'categories' => $this->extract_item_categories($item)
+                'categories' => $this->extract_item_categories($item),
+                'image' => $image_info ? array(
+                    'url' => $image_info['url'],
+                    'source' => $image_info['source']
+                ) : null
             );
             
             $count++;
         }
         
+        // Conta elementi con immagini
+        $items_with_images = array_filter($preview_items, function($item) {
+            return !empty($item['image']);
+        });
+        
         wp_send_json_success(array(
             'feed_title' => isset($rss->channel->title) ? (string)$rss->channel->title : '',
             'feed_description' => isset($rss->channel->description) ? (string)$rss->channel->description : '',
             'total_items' => count($items),
+            'items_with_images' => count($items_with_images),
             'preview_items' => $preview_items
+        ));
+    }
+    
+    /**
+     * Testa l'importazione di un'immagine
+     */
+    public function handle_test_image_import() {
+        check_ajax_referer('rss_importer_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Permessi insufficienti', 'rss-feed-importer'));
+        }
+        
+        $image_url = esc_url_raw($_POST['image_url']);
+        
+        if (!$image_url) {
+            wp_send_json_error(__('URL immagine non valido', 'rss-feed-importer'));
+        }
+        
+        // Testa il download dell'immagine
+        $image_data = RSSImporterHelpers::download_image($image_url);
+        
+        if (is_wp_error($image_data)) {
+            wp_send_json_error($image_data->get_error_message());
+        }
+        
+        wp_send_json_success(array(
+            'message' => __('Immagine scaricata con successo', 'rss-feed-importer'),
+            'size' => size_format($image_data['size']),
+            'type' => $image_data['mime_type']
+        ));
+    }
+    
+    /**
+     * Rigenera tutte le miniature delle immagini importate
+     */
+    public function handle_regenerate_thumbnails() {
+        check_ajax_referer('rss_importer_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Permessi insufficienti', 'rss-feed-importer'));
+        }
+        
+        global $wpdb;
+        
+        // Trova tutte le immagini importate dal plugin
+        $rss_images = $wpdb->get_col(
+            "SELECT ID FROM {$wpdb->posts} 
+             WHERE post_type = 'attachment' 
+             AND post_title LIKE 'rss-import-%'"
+        );
+        
+        $regenerated_count = 0;
+        $errors = array();
+        
+        foreach ($rss_images as $attachment_id) {
+            $image_path = get_attached_file($attachment_id);
+            
+            if (!$image_path || !file_exists($image_path)) {
+                $errors[] = sprintf(__('File non trovato per attachment ID %d', 'rss-feed-importer'), $attachment_id);
+                continue;
+            }
+            
+            // Rigenera i metadati dell'immagine
+            $attachment_data = wp_generate_attachment_metadata($attachment_id, $image_path);
+            
+            if ($attachment_data) {
+                wp_update_attachment_metadata($attachment_id, $attachment_data);
+                $regenerated_count++;
+            } else {
+                $errors[] = sprintf(__('Errore rigenerazione per attachment ID %d', 'rss-feed-importer'), $attachment_id);
+            }
+        }
+        
+        $message = sprintf(__('Rigenerate %d miniature', 'rss-feed-importer'), $regenerated_count);
+        
+        if (!empty($errors)) {
+            $message .= '. ' . sprintf(__('%d errori', 'rss-feed-importer'), count($errors));
+        }
+        
+        wp_send_json_success(array(
+            'message' => $message,
+            'regenerated' => $regenerated_count,
+            'errors' => count($errors),
+            'error_details' => array_slice($errors, 0, 5) // Primi 5 errori
         ));
     }
     

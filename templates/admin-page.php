@@ -14,6 +14,41 @@ if (!defined('ABSPATH')) {
     <h1><?php _e('RSS Feed Importer - Gestione Feed', 'rss-feed-importer'); ?></h1>
     
     <div class="rss-importer-container">
+        <!-- Statistiche rapide -->
+        <?php
+        global $wpdb;
+        $table_feeds = $wpdb->prefix . RSS_IMPORTER_TABLE_FEEDS;
+        $table_imports = $wpdb->prefix . RSS_IMPORTER_TABLE_IMPORTS;
+        
+        $total_feeds = $wpdb->get_var("SELECT COUNT(*) FROM $table_feeds");
+        $active_feeds = $wpdb->get_var("SELECT COUNT(*) FROM $table_feeds WHERE status = 'active'");
+        $total_imports = $wpdb->get_var("SELECT COUNT(*) FROM $table_imports");
+        $images_imported = $wpdb->get_var("SELECT COUNT(*) FROM $table_imports WHERE featured_image_imported = 1");
+        ?>
+        
+        <?php if ($total_feeds > 0): ?>
+        <div class="rss-importer-stats">
+            <div class="stats-grid">
+                <div class="stat-box total-stat">
+                    <h3><?php echo number_format_i18n($total_feeds); ?></h3>
+                    <p><?php _e('Feed Configurati', 'rss-feed-importer'); ?></p>
+                </div>
+                <div class="stat-box success-stat">
+                    <h3><?php echo number_format_i18n($active_feeds); ?></h3>
+                    <p><?php _e('Feed Attivi', 'rss-feed-importer'); ?></p>
+                </div>
+                <div class="stat-box today-stat">
+                    <h3><?php echo number_format_i18n($total_imports); ?></h3>
+                    <p><?php _e('Post Importati', 'rss-feed-importer'); ?></p>
+                </div>
+                <div class="stat-box images-stat">
+                    <h3><?php echo number_format_i18n($images_imported); ?></h3>
+                    <p><?php _e('Immagini Importate', 'rss-feed-importer'); ?></p>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+        
         <!-- Sezione aggiunta/modifica feed -->
         <div class="rss-importer-form-section">
             <h2><?php _e('Aggiungi/Modifica Feed RSS', 'rss-feed-importer'); ?></h2>
@@ -117,7 +152,14 @@ if (!defined('ABSPATH')) {
                                     <?php _e('Genera tag automaticamente', 'rss-feed-importer'); ?>
                                 </label>
                             </fieldset>
-                            <p class="description"><?php _e('Genera automaticamente categorie e tag basati sul contenuto del post', 'rss-feed-importer'); ?></p>
+                            <p class="description">
+                                <?php _e('Genera automaticamente categorie e tag basati sul contenuto del post', 'rss-feed-importer'); ?>
+                                <br>
+                                <small style="color: #2271b1;">
+                                    <span class="dashicons dashicons-info" style="font-size: 14px; vertical-align: middle;"></span>
+                                    <?php _e('Le immagini in evidenza vengono importate automaticamente se abilitato nelle impostazioni generali.', 'rss-feed-importer'); ?>
+                                </small>
+                            </p>
                         </td>
                     </tr>
                 </table>
@@ -125,6 +167,15 @@ if (!defined('ABSPATH')) {
                 <p class="submit">
                     <input type="submit" name="submit" id="submit" class="button-primary" value="<?php _e('Salva Feed', 'rss-feed-importer'); ?>">
                     <button type="button" id="reset_form" class="button"><?php _e('Nuovo Feed', 'rss-feed-importer'); ?></button>
+                    
+                    <?php $settings = get_option('rss_importer_settings', array()); ?>
+                    <?php if (empty($settings['image_import'])): ?>
+                        <span style="margin-left: 20px; color: #dba617;">
+                            <span class="dashicons dashicons-warning" style="font-size: 16px; vertical-align: middle;"></span>
+                            <?php _e('Importazione immagini disabilitata.', 'rss-feed-importer'); ?>
+                            <a href="<?php echo admin_url('admin.php?page=rss-importer-settings'); ?>"><?php _e('Abilita nelle impostazioni', 'rss-feed-importer'); ?></a>
+                        </span>
+                    <?php endif; ?>
                 </p>
             </form>
         </div>
@@ -154,11 +205,23 @@ if (!defined('ABSPATH')) {
                             <th scope="col" class="manage-column column-frequency"><?php _e('Frequenza', 'rss-feed-importer'); ?></th>
                             <th scope="col" class="manage-column column-last-import"><?php _e('Ultima Importazione', 'rss-feed-importer'); ?></th>
                             <th scope="col" class="manage-column column-total"><?php _e('Post Importati', 'rss-feed-importer'); ?></th>
+                            <th scope="col" class="manage-column column-images"><?php _e('Immagini', 'rss-feed-importer'); ?></th>
                             <th scope="col" class="manage-column column-actions"><?php _e('Azioni', 'rss-feed-importer'); ?></th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($feeds as $feed): ?>
+                            <?php
+                            // Calcola statistiche immagini per questo feed
+                            $feed_images = $wpdb->get_var($wpdb->prepare(
+                                "SELECT COUNT(*) FROM $table_imports WHERE feed_id = %d AND featured_image_imported = 1",
+                                $feed->id
+                            ));
+                            $feed_total_posts = $wpdb->get_var($wpdb->prepare(
+                                "SELECT COUNT(*) FROM $table_imports WHERE feed_id = %d",
+                                $feed->id
+                            ));
+                            ?>
                             <tr data-feed-id="<?php echo esc_attr($feed->id); ?>">
                                 <td class="column-name column-primary">
                                     <strong><?php echo esc_html($feed->name); ?></strong>
@@ -206,6 +269,24 @@ if (!defined('ABSPATH')) {
                                 <td class="column-total">
                                     <strong><?php echo intval($feed->total_imported); ?></strong>
                                 </td>
+                                <td class="column-images">
+                                    <?php if ($feed_total_posts > 0): ?>
+                                        <div style="display: flex; align-items: center; gap: 5px;">
+                                            <span class="dashicons dashicons-format-image" style="color: #2271b1; font-size: 16px;"></span>
+                                            <span style="font-weight: 600;"><?php echo intval($feed_images); ?></span>
+                                            <small style="color: #666;">/ <?php echo intval($feed_total_posts); ?></small>
+                                        </div>
+                                        <?php
+                                        $success_rate = $feed_total_posts > 0 ? round(($feed_images / $feed_total_posts) * 100) : 0;
+                                        $color = $success_rate >= 70 ? '#46b450' : ($success_rate >= 40 ? '#dba617' : '#dc3232');
+                                        ?>
+                                        <small style="color: <?php echo $color; ?>; font-weight: 500;">
+                                            <?php echo $success_rate; ?>% importate
+                                        </small>
+                                    <?php else: ?>
+                                        <em style="color: #666;"><?php _e('Nessun dato', 'rss-feed-importer'); ?></em>
+                                    <?php endif; ?>
+                                </td>
                                 <td class="column-actions">
                                     <div class="button-group">
                                         <button type="button" class="button button-small import-feed" data-feed-id="<?php echo esc_attr($feed->id); ?>">
@@ -220,6 +301,19 @@ if (!defined('ABSPATH')) {
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+                
+                <!-- Informazioni aggiuntive -->
+                <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
+                    <h4 style="margin-top: 0; color: #495057;"><?php _e('Suggerimenti per l\'importazione immagini:', 'rss-feed-importer'); ?></h4>
+                    <ul style="margin-bottom: 0; color: #6c757d;">
+                        <li><?php _e('Le immagini vengono cercate automaticamente nei feed RSS (enclosure, media:content, contenuto HTML)', 'rss-feed-importer'); ?></li>
+                        <li><?php _e('Se l\'importazione di un\'immagine fallisce, verrà utilizzata l\'immagine predefinita configurata nelle impostazioni', 'rss-feed-importer'); ?></li>
+                        <li><?php _e('Le immagini importate vengono ottimizzate automaticamente per le performance del sito', 'rss-feed-importer'); ?></li>
+                        <li><?php _e('Puoi gestire l\'immagine predefinita e altre impostazioni nella pagina', 'rss-feed-importer'); ?> 
+                            <a href="<?php echo admin_url('admin.php?page=rss-importer-settings'); ?>"><?php _e('Impostazioni', 'rss-feed-importer'); ?></a>
+                        </li>
+                    </ul>
+                </div>
             <?php endif; ?>
         </div>
     </div>

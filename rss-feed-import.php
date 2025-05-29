@@ -225,6 +225,8 @@ class RSSFeedImporter {
             import_date datetime DEFAULT CURRENT_TIMESTAMP,
             categories_created text,
             tags_created text,
+            featured_image_imported tinyint(1) DEFAULT 0,
+            featured_image_url text,
             status enum('success', 'error', 'duplicate') DEFAULT 'success',
             error_message text,
             PRIMARY KEY (id),
@@ -290,6 +292,9 @@ class RSSFeedImporter {
         if (strpos($hook, 'rss-feed-importer') !== false || strpos($hook, 'rss-importer') !== false) {
             wp_enqueue_script('rss-importer-admin', RSS_IMPORTER_PLUGIN_URL . 'assets/admin.js', array('jquery'), RSS_IMPORTER_VERSION, true);
             wp_enqueue_style('rss-importer-admin', RSS_IMPORTER_PLUGIN_URL . 'assets/admin.css', array(), RSS_IMPORTER_VERSION);
+            
+            // Enqueue media uploader per immagine default
+            wp_enqueue_media();
             
             wp_localize_script('rss-importer-admin', 'rssImporter', array(
                 'ajaxurl' => admin_url('admin-ajax.php'),
@@ -435,7 +440,8 @@ class RSSFeedImporter {
             'Stato Importazione',
             'Titolo Post',
             'Stato Post',
-            'Data Pubblicazione'
+            'Data Pubblicazione',
+            'Immagine Importata'
         ));
         
         // Dati
@@ -449,7 +455,8 @@ class RSSFeedImporter {
                 $row['status'],
                 $row['post_title'],
                 $row['post_status'],
-                $row['post_date']
+                $row['post_date'],
+                $row['featured_image_imported'] ? 'Sì' : 'No'
             ));
         }
         
@@ -502,6 +509,7 @@ class RSSFeedImporter {
                 i.original_url,
                 i.import_date,
                 i.status,
+                i.featured_image_imported,
                 p.post_title,
                 p.post_status,
                 p.post_date
@@ -562,6 +570,7 @@ class RSSFeedImporter {
             'category_creation_method' => sanitize_text_field($data['category_creation_method']),
             'tag_creation_method' => sanitize_text_field($data['tag_creation_method']),
             'image_import' => isset($data['image_import']) ? 1 : 0,
+            'default_featured_image' => intval($data['default_featured_image']),
             'excerpt_length' => intval($data['excerpt_length'])
         );
         
@@ -577,6 +586,7 @@ class RSSFeedImporter {
             'category_creation_method' => 'auto',
             'tag_creation_method' => 'auto',
             'image_import' => 1,
+            'default_featured_image' => 0,
             'excerpt_length' => 150
         );
     }
@@ -771,6 +781,16 @@ class RSSFeedImporter {
             $tags_created = $this->auto_generate_tags($item, $post_id, $settings);
         }
         
+        // Gestione immagine in evidenza
+        $featured_image_imported = false;
+        $featured_image_url = '';
+        
+        if ($settings['image_import']) {
+            $image_result = $this->handle_featured_image($item, $post_id, $settings);
+            $featured_image_imported = $image_result['success'];
+            $featured_image_url = $image_result['image_url'];
+        }
+        
         // Salva log dell'importazione
         $table_imports = $wpdb->prefix . RSS_IMPORTER_TABLE_IMPORTS;
         $wpdb->insert($table_imports, array(
@@ -780,6 +800,8 @@ class RSSFeedImporter {
             'original_title' => $title,
             'categories_created' => json_encode($categories_created),
             'tags_created' => json_encode($tags_created),
+            'featured_image_imported' => $featured_image_imported ? 1 : 0,
+            'featured_image_url' => $featured_image_url,
             'status' => 'success'
         ));
         
@@ -788,6 +810,172 @@ class RSSFeedImporter {
             'message' => sprintf(__('Post importato: %s', 'rss-feed-importer'), $title),
             'post_id' => $post_id
         );
+    }
+    
+    /**
+     * Gestisce l'importazione dell'immagine in evidenza
+     */
+    private function handle_featured_image($item, $post_id, $settings) {
+        $image_url = $this->extract_featured_image_from_item($item);
+        
+        if ($image_url) {
+            // Prova a importare l'immagine dal feed
+            $attachment_id = $this->import_image_to_media_library($image_url, $post_id);
+            
+            if ($attachment_id) {
+                set_post_thumbnail($post_id, $attachment_id);
+                return array(
+                    'success' => true,
+                    'image_url' => $image_url,
+                    'attachment_id' => $attachment_id
+                );
+            }
+        }
+        
+        // Se l'importazione dell'immagine fallisce, usa l'immagine di default
+        if (!empty($settings['default_featured_image'])) {
+            set_post_thumbnail($post_id, $settings['default_featured_image']);
+            return array(
+                'success' => true,
+                'image_url' => 'default',
+                'attachment_id' => $settings['default_featured_image']
+            );
+        }
+        
+        return array(
+            'success' => false,
+            'image_url' => $image_url ?: '',
+            'attachment_id' => null
+        );
+    }
+    
+    /**
+     * Estrae l'URL dell'immagine dall'item RSS
+     */
+    private function extract_featured_image_from_item($item) {
+        // Cerca nei vari campi possibili per l'immagine
+        
+        // 1. Controlla enclosure (common in RSS feeds)
+        if (isset($item->enclosure)) {
+            $type = (string)$item->enclosure['type'];
+            if (strpos($type, 'image/') === 0) {
+                return (string)$item->enclosure['url'];
+            }
+        }
+        
+        // 2. Controlla media:content (Media RSS)
+        if (isset($item->children('media', true)->content)) {
+            foreach ($item->children('media', true)->content as $media) {
+                $type = (string)$media['type'];
+                if (strpos($type, 'image/') === 0) {
+                    return (string)$media['url'];
+                }
+            }
+        }
+        
+        // 3. Controlla media:thumbnail
+        if (isset($item->children('media', true)->thumbnail)) {
+            return (string)$item->children('media', true)->thumbnail['url'];
+        }
+        
+        // 4. Cerca immagini nel contenuto HTML
+        $content = '';
+        if (isset($item->description)) {
+            $content = (string)$item->description;
+        } elseif (isset($item->children('content', true)->encoded)) {
+            $content = (string)$item->children('content', true)->encoded;
+        }
+        
+        if ($content) {
+            preg_match('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $content, $matches);
+            if (!empty($matches[1])) {
+                return $matches[1];
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Importa un'immagine nella libreria media di WordPress
+     */
+    private function import_image_to_media_library($image_url, $post_id) {
+        // Verifica che l'URL sia valido
+        if (!filter_var($image_url, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+        
+        // Scarica l'immagine
+        $response = wp_remote_get($image_url, array(
+            'timeout' => 30,
+            'user-agent' => 'RSS Feed Importer/1.0'
+        ));
+        
+        if (is_wp_error($response)) {
+            return false;
+        }
+        
+        $image_data = wp_remote_retrieve_body($response);
+        $content_type = wp_remote_retrieve_header($response, 'content-type');
+        
+        // Verifica che sia un'immagine
+        if (strpos($content_type, 'image/') !== 0) {
+            return false;
+        }
+        
+        // Determina l'estensione del file
+        $extension = '';
+        switch ($content_type) {
+            case 'image/jpeg':
+                $extension = 'jpg';
+                break;
+            case 'image/png':
+                $extension = 'png';
+                break;
+            case 'image/gif':
+                $extension = 'gif';
+                break;
+            case 'image/webp':
+                $extension = 'webp';
+                break;
+            default:
+                // Prova a estrarre dall'URL
+                $parsed_url = parse_url($image_url);
+                $path_info = pathinfo($parsed_url['path']);
+                $extension = isset($path_info['extension']) ? $path_info['extension'] : 'jpg';
+        }
+        
+        // Genera un nome file unico
+        $filename = 'rss-import-' . $post_id . '-' . time() . '.' . $extension;
+        
+        // Carica il file usando wp_upload_bits
+        $upload = wp_upload_bits($filename, null, $image_data);
+        
+        if ($upload['error']) {
+            return false;
+        }
+        
+        // Prepara i dati per l'attachment
+        $attachment = array(
+            'post_mime_type' => $content_type,
+            'post_title' => sanitize_file_name(pathinfo($filename, PATHINFO_FILENAME)),
+            'post_content' => '',
+            'post_status' => 'inherit'
+        );
+        
+        // Inserisci l'attachment nel database
+        $attachment_id = wp_insert_attachment($attachment, $upload['file'], $post_id);
+        
+        if (is_wp_error($attachment_id)) {
+            return false;
+        }
+        
+        // Genera i metadati dell'immagine
+        require_once(ABSPATH . 'wp-admin/includes/image.php');
+        $attachment_data = wp_generate_attachment_metadata($attachment_id, $upload['file']);
+        wp_update_attachment_metadata($attachment_id, $attachment_data);
+        
+        return $attachment_id;
     }
     
     private function is_duplicate_post($title, $url, $method) {

@@ -210,7 +210,296 @@ class RSSImporterHelpers {
     }
     
     /**
-     * Ridimensiona un'immagine
+     * Valida e scarica un'immagine da un URL
+     */
+    public static function download_image($image_url, $timeout = 30) {
+        // Valida URL
+        if (!filter_var($image_url, FILTER_VALIDATE_URL)) {
+            return new WP_Error('invalid_url', 'URL immagine non valido');
+        }
+        
+        // Applica filtro all'URL
+        $image_url = apply_filters(RSS_IMPORTER_FILTER_IMAGE_URL, $image_url);
+        
+        // Download dell'immagine
+        $response = wp_remote_get($image_url, array(
+            'timeout' => $timeout,
+            'user-agent' => rss_importer_get_random_user_agent(),
+            'headers' => array(
+                'Accept' => 'image/*'
+            )
+        ));
+        
+        if (is_wp_error($response)) {
+            return $response;
+        }
+        
+        $status_code = wp_remote_retrieve_response_code($response);
+        if ($status_code !== 200) {
+            return new WP_Error('download_failed', sprintf('Download fallito con codice %d', $status_code));
+        }
+        
+        $image_data = wp_remote_retrieve_body($response);
+        $content_type = wp_remote_retrieve_header($response, 'content-type');
+        
+        // Verifica tipo di contenuto
+        if (!rss_importer_is_supported_image_type($content_type)) {
+            return new WP_Error('unsupported_type', 'Tipo di immagine non supportato: ' . $content_type);
+        }
+        
+        // Verifica dimensione
+        $image_size = strlen($image_data);
+        if ($image_size > RSS_IMPORTER_IMAGE_MAX_SIZE) {
+            return new WP_Error('file_too_large', 'Immagine troppo grande: ' . size_format($image_size));
+        }
+        
+        // Applica filtro alla dimensione
+        $image_size = apply_filters(RSS_IMPORTER_FILTER_IMAGE_SIZE, $image_size, $image_url);
+        
+        return array(
+            'data' => $image_data,
+            'mime_type' => $content_type,
+            'size' => $image_size
+        );
+    }
+    
+    /**
+     * Salva un'immagine nella libreria media di WordPress
+     */
+    public static function save_image_to_media_library($image_data, $filename, $post_id = 0) {
+        if (!function_exists('wp_upload_bits')) {
+            require_once(ABSPATH . 'wp-admin/includes/file.php');
+        }
+        
+        // Upload del file
+        $upload = wp_upload_bits($filename, null, $image_data['data']);
+        
+        if ($upload['error']) {
+            return new WP_Error('upload_failed', $upload['error']);
+        }
+        
+        // Prepara i dati per l'attachment
+        $attachment = array(
+            'post_mime_type' => $image_data['mime_type'],
+            'post_title' => sanitize_file_name(pathinfo($filename, PATHINFO_FILENAME)),
+            'post_content' => '',
+            'post_status' => 'inherit'
+        );
+        
+        // Inserisci l'attachment nel database
+        $attachment_id = wp_insert_attachment($attachment, $upload['file'], $post_id);
+        
+        if (is_wp_error($attachment_id)) {
+            // Rimuovi il file se l'inserimento fallisce
+            @unlink($upload['file']);
+            return $attachment_id;
+        }
+        
+        // Genera i metadati dell'immagine
+        if (!function_exists('wp_generate_attachment_metadata')) {
+            require_once(ABSPATH . 'wp-admin/includes/image.php');
+        }
+        
+        $attachment_data = wp_generate_attachment_metadata($attachment_id, $upload['file']);
+        wp_update_attachment_metadata($attachment_id, $attachment_data);
+        
+        return $attachment_id;
+    }
+    
+    /**
+     * Ottimizza un'immagine dopo l'upload
+     */
+    public static function optimize_image($attachment_id) {
+        $image_path = get_attached_file($attachment_id);
+        
+        if (!$image_path || !file_exists($image_path)) {
+            return false;
+        }
+        
+        $image_editor = wp_get_image_editor($image_path);
+        
+        if (is_wp_error($image_editor)) {
+            return false;
+        }
+        
+        $image_size = $image_editor->get_size();
+        $max_width = RSS_IMPORTER_IMAGE_MAX_WIDTH;
+        $max_height = RSS_IMPORTER_IMAGE_MAX_HEIGHT;
+        
+        // Ridimensiona se necessario
+        if ($image_size['width'] > $max_width || $image_size['height'] > $max_height) {
+            $image_editor->resize($max_width, $max_height, false);
+        }
+        
+        // Imposta qualità
+        $image_editor->set_quality(RSS_IMPORTER_IMAGE_QUALITY);
+        
+        // Salva l'immagine ottimizzata
+        $result = $image_editor->save();
+        
+        if (is_wp_error($result)) {
+            return false;
+        }
+        
+        // Rigenera i metadati
+        $attachment_data = wp_generate_attachment_metadata($attachment_id, $result['path']);
+        wp_update_attachment_metadata($attachment_id, $attachment_data);
+        
+        return true;
+    }
+    
+    /**
+     * Estrae l'URL dell'immagine da un elemento RSS
+     */
+    public static function extract_image_from_rss_item($item) {
+        $image_urls = array();
+        
+        // 1. Controlla enclosure (RSS standard)
+        if (isset($item->enclosure)) {
+            $enclosure = $item->enclosure;
+            $type = (string)$enclosure['type'];
+            if (strpos($type, 'image/') === 0) {
+                $image_urls[] = array(
+                    'url' => (string)$enclosure['url'],
+                    'type' => $type,
+                    'source' => 'enclosure',
+                    'priority' => 1
+                );
+            }
+        }
+        
+        // 2. Controlla media:content (Media RSS)
+        if (isset($item->children('media', true)->content)) {
+            foreach ($item->children('media', true)->content as $media) {
+                $type = (string)$media['type'];
+                if (strpos($type, 'image/') === 0) {
+                    $image_urls[] = array(
+                        'url' => (string)$media['url'],
+                        'type' => $type,
+                        'source' => 'media:content',
+                        'priority' => 2
+                    );
+                }
+            }
+        }
+        
+        // 3. Controlla media:thumbnail
+        if (isset($item->children('media', true)->thumbnail)) {
+            $thumbnail = $item->children('media', true)->thumbnail;
+            $image_urls[] = array(
+                'url' => (string)$thumbnail['url'],
+                'type' => 'image/jpeg', // Assunto
+                'source' => 'media:thumbnail',
+                'priority' => 3
+            );
+        }
+        
+        // 4. Cerca immagini nel contenuto HTML
+        $content_fields = array('description', 'content:encoded');
+        foreach ($content_fields as $field) {
+            $content = '';
+            if ($field === 'content:encoded') {
+                if (isset($item->children('content', true)->encoded)) {
+                    $content = (string)$item->children('content', true)->encoded;
+                }
+            } else {
+                if (isset($item->$field)) {
+                    $content = (string)$item->$field;
+                }
+            }
+            
+            if ($content) {
+                preg_match_all('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $content, $matches);
+                if (!empty($matches[1])) {
+                    foreach ($matches[1] as $img_url) {
+                        $image_urls[] = array(
+                            'url' => $img_url,
+                            'type' => 'image/jpeg', // Assunto
+                            'source' => 'content_html',
+                            'priority' => 4
+                        );
+                    }
+                }
+            }
+        }
+        
+        // Ordina per priorità e restituisci la migliore
+        if (!empty($image_urls)) {
+            usort($image_urls, function($a, $b) {
+                return $a['priority'] - $b['priority'];
+            });
+            
+            return $image_urls[0];
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Genera un nome file unico per l'immagine
+     */
+    public static function generate_image_filename($post_id, $original_url, $mime_type) {
+        $extension = rss_importer_get_image_extension($mime_type);
+        return rss_importer_generate_image_filename($post_id, $original_url, $extension);
+    }
+    
+    /**
+     * Imposta l'immagine in evidenza per un post
+     */
+    public static function set_featured_image_from_url($post_id, $image_url) {
+        // Scarica l'immagine
+        $image_data = self::download_image($image_url);
+        
+        if (is_wp_error($image_data)) {
+            return $image_data;
+        }
+        
+        // Genera nome file
+        $filename = self::generate_image_filename($post_id, $image_url, $image_data['mime_type']);
+        
+        // Salva nella libreria media
+        $attachment_id = self::save_image_to_media_library($image_data, $filename, $post_id);
+        
+        if (is_wp_error($attachment_id)) {
+            return $attachment_id;
+        }
+        
+        // Ottimizza l'immagine
+        self::optimize_image($attachment_id);
+        
+        // Imposta come immagine in evidenza
+        $result = set_post_thumbnail($post_id, $attachment_id);
+        
+        if (!$result) {
+            return new WP_Error('thumbnail_failed', 'Impossibile impostare l\'immagine in evidenza');
+        }
+        
+        // Trigger hook per immagine importata
+        do_action(RSS_IMPORTER_HOOK_IMAGE_IMPORTED, $post_id, $attachment_id, $image_url);
+        
+        return $attachment_id;
+    }
+    
+    /**
+     * Imposta un'immagine predefinita come immagine in evidenza
+     */
+    public static function set_default_featured_image($post_id, $default_image_id) {
+        if (!$default_image_id || !get_post($default_image_id)) {
+            return false;
+        }
+        
+        $result = set_post_thumbnail($post_id, $default_image_id);
+        
+        if ($result) {
+            // Trigger hook per immagine predefinita
+            do_action(RSS_IMPORTER_HOOK_IMAGE_IMPORTED, $post_id, $default_image_id, 'default');
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Ridimensiona un'immagine (mantenuto per compatibilità)
      */
     public static function resize_image($image_url, $width = 300, $height = 200) {
         $upload_dir = wp_upload_dir();
@@ -328,17 +617,23 @@ class RSSImporterHelpers {
     private static function update_to_1_1_0() {
         global $wpdb;
         
-        // Esempio: aggiungi una nuova colonna alla tabella feeds
-        $table_feeds = $wpdb->prefix . RSS_IMPORTER_TABLE_FEEDS;
+        // Aggiungi colonne per supporto immagini se non esistono
+        $table_imports = $wpdb->prefix . RSS_IMPORTER_TABLE_IMPORTS;
         
-        $column_exists = $wpdb->get_results(
-            "SHOW COLUMNS FROM $table_feeds LIKE 'new_column'"
+        $columns_to_add = array(
+            'featured_image_imported' => 'tinyint(1) DEFAULT 0',
+            'featured_image_url' => 'text'
         );
         
-        if (empty($column_exists)) {
-            $wpdb->query(
-                "ALTER TABLE $table_feeds ADD COLUMN new_column VARCHAR(255) DEFAULT NULL"
+        foreach ($columns_to_add as $column_name => $column_definition) {
+            $column_exists = $wpdb->get_results(
+                $wpdb->prepare("SHOW COLUMNS FROM $table_imports LIKE %s", $column_name)
             );
+            
+            if (empty($column_exists)) {
+                $wpdb->query("ALTER TABLE $table_imports ADD COLUMN $column_name $column_definition");
+                self::log("Aggiunta colonna $column_name alla tabella imports", 'info');
+            }
         }
     }
     
@@ -363,7 +658,7 @@ class RSSImporterHelpers {
         );
         
         // Verifica estensioni PHP
-        $required_extensions = array('simplexml', 'curl', 'json');
+        $required_extensions = array('simplexml', 'curl', 'json', 'gd');
         foreach ($required_extensions as $ext) {
             $requirements['extension_' . $ext] = array(
                 'required' => true,
@@ -387,6 +682,10 @@ class RSSImporterHelpers {
             'status' => $memory_limit >= wp_convert_hr_to_bytes('128M')
         );
         
+        // Verifica supporto immagini
+        $image_requirements = rss_importer_check_image_support();
+        $requirements = array_merge($requirements, $image_requirements);
+        
         return $requirements;
     }
     
@@ -409,6 +708,10 @@ class RSSImporterHelpers {
         $stats['total_imports'] = $wpdb->get_var("SELECT COUNT(*) FROM $table_imports");
         $stats['successful_imports'] = $wpdb->get_var("SELECT COUNT(*) FROM $table_imports WHERE status = 'success'");
         $stats['failed_imports'] = $wpdb->get_var("SELECT COUNT(*) FROM $table_imports WHERE status = 'error'");
+        
+        // Statistiche immagini
+        $image_stats = rss_importer_get_image_stats();
+        $stats = array_merge($stats, $image_stats);
         
         // Importazioni per periodo
         $stats['imports_today'] = $wpdb->get_var("SELECT COUNT(*) FROM $table_imports WHERE DATE(import_date) = CURDATE()");
