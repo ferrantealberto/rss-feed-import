@@ -733,9 +733,29 @@ class RSSFeedImporter {
     private function import_single_item($item, $feed, $settings) {
         global $wpdb;
         
+        // Estrai il contenuto completo
         $title = sanitize_text_field((string)$item->title);
         $link = esc_url_raw((string)$item->link);
-        $description = wp_kses_post((string)$item->description);
+        $content = '';
+        
+        // Prova a ottenere il contenuto completo
+        if (isset($item->children('content', true)->encoded)) {
+            $content = (string)$item->children('content', true)->encoded;
+        } else {
+            $content = (string)$item->description;
+        }
+        
+        // Pulisci il contenuto
+        $content = wp_kses_post($content);
+        
+        // Rielabora il contenuto se abilitato
+        if (!empty($settings['ai_rewrite']) && !empty($settings['openrouter_api_key'])) {
+            $rewritten_content = rss_importer_rewrite_content($content, $settings);
+            if ($rewritten_content) {
+                $content = $rewritten_content;
+            }
+        }
+        
         $pub_date = strtotime((string)$item->pubDate);
         
         // Controllo duplicati
@@ -749,8 +769,8 @@ class RSSFeedImporter {
         // Crea il post
         $post_data = array(
             'post_title' => $title,
-            'post_content' => $description,
-            'post_excerpt' => wp_trim_words($description, $settings['excerpt_length']),
+            'post_content' => $content,
+            'post_excerpt' => wp_trim_words($content, $settings['excerpt_length']),
             'post_status' => $feed->post_status,
             'post_author' => $feed->author_id,
             'post_date' => $pub_date ? date('Y-m-d H:i:s', $pub_date) : current_time('mysql'),
