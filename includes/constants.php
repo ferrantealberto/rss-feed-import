@@ -46,6 +46,22 @@ define('RSS_IMPORTER_REWRITE_TONES', array(
     'journalistic' => 'Giornalistico',
     'creative' => 'Creativo'
 ));
+// Configurazioni OpenRouter
+define('RSS_IMPORTER_OPENROUTER_MODELS', array(
+    'anthropic/claude-2' => 'Claude 2',
+    'google/palm-2-chat-bison' => 'PaLM 2 Chat',
+    'meta-llama/llama-2-70b-chat' => 'Llama 2 70B',
+    'openai/gpt-3.5-turbo' => 'GPT-3.5 Turbo',
+    'openai/gpt-4' => 'GPT-4'
+));
+
+define('RSS_IMPORTER_REWRITE_TONES', array(
+    'professional' => 'Professionale',
+    'casual' => 'Informale',
+    'academic' => 'Accademico',
+    'journalistic' => 'Giornalistico',
+    'creative' => 'Creativo'
+));
 
 // Configurazioni immagini
 define('RSS_IMPORTER_IMAGE_MAX_SIZE', 5242880); // 5MB
