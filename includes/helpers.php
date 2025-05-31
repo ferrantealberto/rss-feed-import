@@ -760,22 +760,4 @@ class RSSImporterHelpers {
         
         // Importazioni per periodo
         $stats['imports_today'] = $wpdb->get_var("SELECT COUNT(*) FROM $table_imports WHERE DATE(import_date) = CURDATE()");
-        $stats['imports_this_week'] = $wpdb->get_var("SELECT COUNT(*) FROM $table_imports WHERE import_date >= DATE_SUB(NOW(), INTERVAL 1 WEEK)");
-        $stats['imports_this_month'] = $wpdb->get_var("SELECT COUNT(*) FROM $table_imports WHERE import_date >= DATE_SUB(NOW(), INTERVAL 1 MONTH)");
-        
-        // Feed più attivi
-        $stats['most_active_feed'] = $wpdb->get_row("
-            SELECT f.name, COUNT(i.id) as import_count
-            FROM $table_feeds f
-            LEFT JOIN $table_imports i ON f.id = i.feed_id
-            GROUP BY f.id
-            ORDER BY import_count DESC
-            LIMIT 1
-        ");
-        
-        return $stats;
-    }
-}
-
-// Inizializza le funzioni helper
-add_action('plugins_loaded', array('RSSImporterHelpers', 'check_plugin_updates'));
+        $stats['imports_this_week'] = $wpdb->get_var("SELECT COUNT
