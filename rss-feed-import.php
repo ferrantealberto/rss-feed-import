@@ -734,8 +734,6 @@ class RSSFeedImporter {
         global $wpdb;
         
         // Estrai il contenuto completo
-        $title = sanitize_text_field((string)$item->title);
-        $link = esc_url_raw((string)$item->link);
         $content = '';
         
         // Prova a ottenere il contenuto completo
@@ -751,6 +749,27 @@ class RSSFeedImporter {
         // Rielabora il contenuto se abilitato
         if (!empty($settings['ai_rewrite']) && !empty($settings['openrouter_api_key'])) {
             $rewritten_content = rss_importer_rewrite_content($content, $settings);
+            if ($rewritten_content) {
+                $content = $rewritten_content;
+            }
+        // Estrai il contenuto completo
+        $title = sanitize_text_field((string)$item->title); 
+        $link = esc_url_raw((string)$item->link); 
+        $content = '';
+        
+        // Prova a ottenere il contenuto completo
+        if (isset($item->children('content', true)->encoded)) {
+            $content = (string)$item->children('content', true)->encoded;
+        } else {
+            $content = (string)$item->description;
+        }
+        
+        // Pulisci il contenuto
+        $content = wp_kses_post($content);
+        
+        // Rielabora il contenuto se abilitato
+        if (!empty($settings['ai_rewrite']) && !empty($settings['openrouter_api_key'])) {
+            $rewritten_content = RSSImporterHelpers::rewrite_content($content, $settings);
             if ($rewritten_content) {
                 $content = $rewritten_content;
             }

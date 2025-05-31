@@ -73,6 +73,51 @@ class RSSImporterHelpers {
     }
     
     /**
+     * Rielabora il contenuto usando OpenRouter
+     */
+    public static function rewrite_content($content, $settings) {
+        if (empty($settings['openrouter_api_key']) || empty($settings['ai_model'])) {
+            return false;
+        }
+        
+        $tone = $settings['rewrite_tone'] ?? 'professional';
+        
+        $prompt = "Rielabora il seguente testo in stile $tone, mantenendo le informazioni chiave ma rendendolo unico:\n\n$content";
+        
+        $response = wp_remote_post('https://openrouter.ai/api/v1/chat/completions', array(
+            'headers' => array(
+                'Authorization' => 'Bearer ' . $settings['openrouter_api_key'],
+                'Content-Type' => 'application/json',
+                'HTTP-Referer' => home_url(),
+                'X-Title' => 'RSS Feed Importer'
+            ),
+            'body' => json_encode(array(
+                'model' => $settings['ai_model'],
+                'messages' => array(
+                    array(
+                        'role' => 'user',
+                        'content' => $prompt
+                    )
+                ),
+                'temperature' => 0.7,
+                'max_tokens' => 2000
+            ))
+        ));
+        
+        if (is_wp_error($response)) {
+            return false;
+        }
+        
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+        
+        if (empty($body['choices'][0]['message']['content'])) {
+            return false;
+        }
+        
+        return $body['choices'][0]['message']['content'];
+    }
+    
+    /**
      * Genera uno slug unico per una categoria
      */
     public static function generate_unique_category_slug($name, $parent = 0) {
@@ -734,20 +779,3 @@ class RSSImporterHelpers {
 
 // Inizializza le funzioni helper
 add_action('plugins_loaded', array('RSSImporterHelpers', 'check_plugin_updates'));
-
-/**
- * Rielabora il contenuto usando OpenRouter
- */
-function rss_importer_rewrite_content($content, $settings) {
-    if (empty($settings['openrouter_api_key']) || empty($settings['ai_model'])) {
-        return false;
-    }
-    
-    $tone = $settings['rewrite_tone'] ?? 'professional';
-    
-    $prompt = "Rielabora il seguente testo in stile $tone, mantenendo le informazioni chiave ma rendendolo unico:\n\n$content";
-    
-    $response = wp_remote_post('https://openrouter.ai/api/v1/chat/completions', array(
-        'headers' => array(
-            'Authorization' => 'Bearer ' . $settings['openrouter_api_key'],
-            'Content-Type' => 
