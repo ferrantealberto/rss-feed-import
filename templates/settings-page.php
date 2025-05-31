@@ -154,6 +154,74 @@ if (!defined('ABSPATH')) {
             
             <!-- Sezione Media e Contenuto -->
             <div class="settings-section">
+                <h2><?php _e('Rielaborazione AI', 'rss-feed-importer'); ?></h2>
+                
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="openrouter_api_key"><?php _e('OpenRouter API Key', 'rss-feed-importer'); ?></label>
+                        </th>
+                        <td>
+                            <input type="text" name="openrouter_api_key" id="openrouter_api_key" 
+                                   value="<?php echo esc_attr($settings['openrouter_api_key'] ?? ''); ?>"
+                                   class="regular-text">
+                            <p class="description">
+                                <?php _e('Chiave API di OpenRouter per la rielaborazione dei post', 'rss-feed-importer'); ?>
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="ai_model"><?php _e('Modello AI', 'rss-feed-importer'); ?></label>
+                        </th>
+                        <td>
+                            <select name="ai_model" id="ai_model">
+                                <?php foreach (RSS_IMPORTER_OPENROUTER_MODELS as $model_id => $model_name): ?>
+                                    <option value="<?php echo esc_attr($model_id); ?>" 
+                                            <?php selected($settings['ai_model'] ?? '', $model_id); ?>>
+                                        <?php echo esc_html($model_name); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="rewrite_tone"><?php _e('Tono Rielaborazione', 'rss-feed-importer'); ?></label>
+                        </th>
+                        <td>
+                            <select name="rewrite_tone" id="rewrite_tone">
+                                <?php foreach (RSS_IMPORTER_REWRITE_TONES as $tone_id => $tone_name): ?>
+                                    <option value="<?php echo esc_attr($tone_id); ?>"
+                                            <?php selected($settings['rewrite_tone'] ?? '', $tone_id); ?>>
+                                        <?php echo esc_html($tone_name); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="ai_rewrite"><?php _e('Rielaborazione Automatica', 'rss-feed-importer'); ?></label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="ai_rewrite" id="ai_rewrite" value="1"
+                                       <?php checked($settings['ai_rewrite'] ?? false, 1); ?>>
+                                <?php _e('Rielabora automaticamente i post importati', 'rss-feed-importer'); ?>
+                            </label>
+                            <p class="description">
+                                <?php _e('Se abilitato, i post verranno rielaborati automaticamente dopo l\'importazione', 'rss-feed-importer'); ?>
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="settings-section">
                 <h2><?php _e('Gestione Media e Contenuto', 'rss-feed-importer'); ?></h2>
                 
                 <table class="form-table">

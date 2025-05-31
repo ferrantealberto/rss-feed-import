@@ -24,10 +24,27 @@ define('RSS_IMPORTER_VALIDATION_CACHE_DURATION', 1800); // 30 minuti
 
 // Configurazioni sicurezza
 define('RSS_IMPORTER_MAX_TITLE_LENGTH', 250);
-define('RSS_IMPORTER_MAX_CONTENT_LENGTH', 50000);
+define('RSS_IMPORTER_MAX_CONTENT_LENGTH', 500000);
 define('RSS_IMPORTER_ALLOWED_HTML_TAGS', array(
     'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
     'ul', 'ol', 'li', 'blockquote', 'a', 'img'
+));
+
+// Configurazioni OpenRouter
+define('RSS_IMPORTER_OPENROUTER_MODELS', array(
+    'anthropic/claude-2' => 'Claude 2',
+    'google/palm-2-chat-bison' => 'PaLM 2 Chat',
+    'meta-llama/llama-2-70b-chat' => 'Llama 2 70B',
+    'openai/gpt-3.5-turbo' => 'GPT-3.5 Turbo',
+    'openai/gpt-4' => 'GPT-4'
+));
+
+define('RSS_IMPORTER_REWRITE_TONES', array(
+    'professional' => 'Professionale',
+    'casual' => 'Informale',
+    'academic' => 'Accademico',
+    'journalistic' => 'Giornalistico',
+    'creative' => 'Creativo'
 ));
 
 // Configurazioni immagini
