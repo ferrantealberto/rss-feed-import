@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useSitesStore } from '../store/sites';
+import { useFeedsStore } from '../store/feeds';
 import { useOpenRouterStore } from '../store/openrouter';
 import { useScheduledPostsStore, ScheduledPost } from '../store/scheduledPosts';
 import { CSVImport } from '../components/CSVImport';
@@ -30,11 +31,11 @@ interface Feed {
 
 export function FeedManager() {
   const { sites } = useSitesStore();
+  const { feeds, addFeeds, updateFeed, deleteFeed } = useFeedsStore();
   const { rewriteContent } = useOpenRouterStore();
   const { posts: scheduledPosts, addPost, removePost, togglePostStatus, reschedulePost } = useScheduledPostsStore();
   const [selectedSite, setSelectedSite] = useState('');
   const [lastPostTime, setLastPostTime] = useState<{[key: string]: number}>({});
-  const [feeds, setFeeds] = useState<Feed[]>([]);
 
   const handleCSVImport = async (importedFeeds: ImportedFeed[]) => {
     try {
@@ -50,7 +51,7 @@ export function FeedManager() {
         priority: feed.priorita
       }));
       
-      setFeeds(prevFeeds => [...prevFeeds, ...newFeeds]);
+      addFeeds(newFeeds);
       alert(`Successfully imported ${newFeeds.length} feeds`);
     } catch (error) {
       console.error('Error importing feeds:', error);
@@ -60,7 +61,7 @@ export function FeedManager() {
 
   const handleDeleteFeed = (feedId: string) => {
     if (window.confirm('Are you sure you want to delete this feed? This will also remove all scheduled posts from this feed.')) {
-      setFeeds(feeds.filter(feed => feed.id !== feedId));
+      deleteFeed(feedId);
       // Remove all scheduled posts from this feed
       scheduledPosts
         .filter(post => post.feedId === feedId)
@@ -186,10 +187,7 @@ export function FeedManager() {
                   className="form-input"
                   value={selectedSite}
                   onChange={(e) => {
-                    const updatedFeeds = feeds.map(f => 
-                      f.id === feed.id ? { ...f, siteId: e.target.value } : f
-                    );
-                    setFeeds(updatedFeeds);
+                    updateFeed(feed.id, { siteId: e.target.value });
                   }}
                 >
                   <option value="">Select a site</option>
