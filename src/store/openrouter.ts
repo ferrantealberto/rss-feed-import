@@ -25,6 +25,7 @@ interface OpenRouterStore {
   setError: (error: string | null) => void;
   verifyApiKey: () => Promise<boolean>;
   fetchModels: () => Promise<void>;
+  rewriteContent: (content: string) => Promise<string>;
 }
 
 export const useOpenRouterStore = create<OpenRouterStore>()(
@@ -44,6 +45,49 @@ export const useOpenRouterStore = create<OpenRouterStore>()(
       setError: (error) => set({ error }),
       
       verifyApiKey: async () => {
+      },
+      
+      rewriteContent: async (content: string) => {
+        const { apiKey, selectedModel, rewriteTone } = get();
+        
+        if (!apiKey || !selectedModel) {
+          throw new Error('API key or model not configured');
+        }
+        
+        try {
+          const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': window.location.origin
+            },
+            body: JSON.stringify({
+              model: selectedModel,
+              messages: [
+                {
+                  role: 'system',
+                  content: `Rewrite the following content in a ${rewriteTone} tone while maintaining key information and making it unique.`
+                },
+                {
+                  role: 'user',
+                  content
+                }
+              ]
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to rewrite content');
+          }
+
+          const data = await response.json();
+          return data.choices[0].message.content;
+          
+        } catch (error) {
+          console.error('Error rewriting content:', error);
+          throw error;
+        }
         const { apiKey } = get();
         set({ isLoading: true, error: null });
         
