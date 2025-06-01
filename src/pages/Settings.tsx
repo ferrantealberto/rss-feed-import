@@ -5,21 +5,21 @@ import { v4 as uuidv4 } from 'uuid';
 import { useState } from 'react';
 
 export function Settings() {
-  const { apiKey, setApiKey, verifyApiKey, fetchModels, availableModels, selectedModel, setSelectedModel } = useOpenRouterStore();
+  const { 
+    apiKey, 
+    setApiKey, 
+    verifyApiKey,
+    availableModels,
+    selectedModel,
+    setSelectedModel,
+    isLoading,
+    error
+  } = useOpenRouterStore();
   const { sites, addSite, updateSite, deleteSite } = useSitesStore();
-  const [isVerifying, setIsVerifying] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleVerifyKey = async () => {
-    setIsVerifying(true);
-    try {
-      const isValid = await verifyApiKey();
-      if (isValid) {
-        await fetchModels();
-      }
-    } finally {
-      setIsVerifying(false);
-    }
+    await verifyApiKey();
   };
 
   const filteredModels = availableModels.filter(model => 
@@ -61,11 +61,17 @@ export function Settings() {
             />
             <button 
               onClick={handleVerifyKey}
-              disabled={isVerifying || !apiKey}
+              disabled={isLoading || !apiKey}
+              className={isLoading ? 'loading' : ''}
             >
-              {isVerifying ? 'Verifying...' : 'Verify'}
+              {isLoading ? 'Verifying...' : 'Verify'}
             </button>
           </div>
+          {error && (
+            <p className="error-message" style={{ color: 'red', marginTop: '8px' }}>
+              {error}
+            </p>
+          )}
           <small>Your API key is encrypted and never shared</small>
         </div>
 
