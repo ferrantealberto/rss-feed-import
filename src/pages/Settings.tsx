@@ -1,7 +1,8 @@
 import { useForm, Controller } from 'react-hook-form';
 import { useOpenRouterStore } from '../store/openrouter';
 import { useSitesStore, WordPressSite } from '../store/sites';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from '@types/uuid';
+import { useState } from 'react';
 
 export function Settings() {
   const { apiKey, setApiKey, verifyApiKey, fetchModels, availableModels, selectedModel, setSelectedModel } = useOpenRouterStore();
