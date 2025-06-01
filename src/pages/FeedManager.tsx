@@ -113,20 +113,6 @@ export function FeedManager() {
     }
   };
 
-  const handleCSVImport = async (feeds: any[]) => {
-    try {
-      // Here you would typically batch process the feeds
-      for (const feed of feeds) {
-        // Add validation and processing logic here
-        console.log('Importing feed:', feed);
-      }
-      alert(`Successfully processed ${feeds.length} feeds`);
-    } catch (error) {
-      console.error('Error importing feeds:', error);
-      alert('Failed to import feeds');
-    }
-  };
-
   return (
     <div>
       <h1 className="card-title">Feed Manager</h1>
