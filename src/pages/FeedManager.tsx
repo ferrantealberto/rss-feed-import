@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSitesStore } from '../store/sites';
 import { useOpenRouterStore } from '../store/openrouter';
+import { CSVImport } from '../components/CSVImport';
 
 export function FeedManager() {
   const { sites } = useSitesStore();
@@ -53,6 +54,20 @@ export function FeedManager() {
     }
   };
 
+  const handleCSVImport = async (feeds: any[]) => {
+    try {
+      // Here you would typically batch process the feeds
+      for (const feed of feeds) {
+        // Add validation and processing logic here
+        console.log('Importing feed:', feed);
+      }
+      alert(`Successfully processed ${feeds.length} feeds`);
+    } catch (error) {
+      console.error('Error importing feeds:', error);
+      alert('Failed to import feeds');
+    }
+  };
+
   return (
     <div>
       <h1 className="card-title">Feed Manager</h1>
@@ -93,6 +108,10 @@ export function FeedManager() {
           </div>
           <button type="submit" className="button button-primary">Add Feed</button>
         </form>
+        
+        <div style={{ marginTop: '20px', padding: '20px', borderTop: '1px solid #eee' }}>
+          <CSVImport onImport={handleCSVImport} />
+        </div>
       </div>
 
       <div className="card">

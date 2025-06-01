@@ -133,7 +133,20 @@ body {
 .form-help {
   margin-top: 4px;
   font-size: 12px;
-  color: #666;
+  color: #666; 
+  line-height: 1.4;
+}
+
+.csv-import {
+  background: #f8f9fa;
+  border-radius: 4px;
+  padding: 15px;
+}
+
+.error-message {
+  color: var(--error-color);
+  margin-top: 8px;
+  font-size: 14px;
 }
 
 /* Buttons */
