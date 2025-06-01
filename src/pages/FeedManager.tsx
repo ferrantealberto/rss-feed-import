@@ -4,12 +4,28 @@ import { useOpenRouterStore } from '../store/openrouter';
 import { useScheduledPostsStore, ScheduledPost } from '../store/scheduledPosts';
 import { CSVImport } from '../components/CSVImport';
 
+interface ImportedFeed {
+  categoria_feed: string;
+  nome_fonte: string;
+  url_rss: string;
+  descrizione_feed: string;
+  frequenza: string;
+  tipo_contenuto: string;
+  priorita: number;
+  status: string;
+}
+
 interface Feed {
   id: string;
   name: string;
   url: string;
   frequency: string;
   status: string;
+  siteId?: string;
+  description?: string;
+  category?: string;
+  contentType?: string;
+  priority?: number;
 }
 
 export function FeedManager() {
@@ -19,6 +35,28 @@ export function FeedManager() {
   const [selectedSite, setSelectedSite] = useState('');
   const [lastPostTime, setLastPostTime] = useState<{[key: string]: number}>({});
   const [feeds, setFeeds] = useState<Feed[]>([]);
+
+  const handleCSVImport = async (importedFeeds: ImportedFeed[]) => {
+    try {
+      const newFeeds = importedFeeds.map(feed => ({
+        id: crypto.randomUUID(),
+        name: feed.nome_fonte,
+        url: feed.url_rss,
+        frequency: feed.frequenza,
+        status: feed.status,
+        description: feed.descrizione_feed,
+        category: feed.categoria_feed,
+        contentType: feed.tipo_contenuto,
+        priority: feed.priorita
+      }));
+      
+      setFeeds(prevFeeds => [...prevFeeds, ...newFeeds]);
+      alert(`Successfully imported ${newFeeds.length} feeds`);
+    } catch (error) {
+      console.error('Error importing feeds:', error);
+      alert('Failed to import feeds');
+    }
+  };
 
   const handleDeleteFeed = (feedId: string) => {
     if (window.confirm('Are you sure you want to delete this feed? This will also remove all scheduled posts from this feed.')) {
@@ -161,8 +199,12 @@ export function FeedManager() {
                 <select 
                   className="form-input"
                   value={selectedSite}
-                  value={feed.siteId || ''}
-                  onChange={(e) => setSelectedSite(e.target.value)}
+                  onChange={(e) => {
+                    const updatedFeeds = feeds.map(f => 
+                      f.id === feed.id ? { ...f, siteId: e.target.value } : f
+                    );
+                    setFeeds(updatedFeeds);
+                  }}
                 >
                   <option value="">Select a site</option>
                   {sites.map(site => (
