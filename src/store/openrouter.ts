@@ -45,6 +45,31 @@ export const useOpenRouterStore = create<OpenRouterStore>()(
       setError: (error) => set({ error }),
       
       verifyApiKey: async () => {
+        const { apiKey } = get();
+        set({ isLoading: true, error: null });
+        
+        try {
+          const response = await fetch('https://openrouter.ai/api/v1/models', {
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'HTTP-Referer': window.location.origin,
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error('Invalid API key');
+          }
+          
+          const models = await response.json();
+          set({ availableModels: models.data });
+          return true;
+        } catch (error) {
+          set({ error: error instanceof Error ? error.message : 'Failed to verify API key' });
+          console.error('API key verification failed:', error);
+          return false;
+        } finally {
+          set({ isLoading: false });
+        }
       },
       
       rewriteContent: async (content: string) => {
@@ -87,31 +112,6 @@ export const useOpenRouterStore = create<OpenRouterStore>()(
         } catch (error) {
           console.error('Error rewriting content:', error);
           throw error;
-        }
-        const { apiKey } = get();
-        set({ isLoading: true, error: null });
-        
-        try {
-          const response = await fetch('https://openrouter.ai/api/v1/models', {
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'HTTP-Referer': window.location.origin,
-            }
-          });
-          
-          if (!response.ok) {
-            throw new Error('Invalid API key');
-          }
-          
-          const models = await response.json();
-          set({ availableModels: models.data });
-          return true;
-        } catch (error) {
-          set({ error: error instanceof Error ? error.message : 'Failed to verify API key' });
-          console.error('API key verification failed:', error);
-          return false;
-        } finally {
-          set({ isLoading: false });
         }
       }
     }),
