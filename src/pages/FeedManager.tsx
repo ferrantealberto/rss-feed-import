@@ -26,7 +26,7 @@ export function FeedManager() {
 
     try {
       // Rewrite content before publishing
-      const rewrittenContent = await rewriteContent(post.content);
+      const { content: rewrittenContent, seo } = await rewriteContent(post.content);
       
       // Update last post time
       setLastPostTime({
@@ -35,7 +35,17 @@ export function FeedManager() {
       });
 
       // TODO: Implement actual WordPress post creation
-      console.log('Publishing to site:', selectedSite, 'Content:', rewrittenContent);
+      console.log('Publishing to site:', selectedSite, {
+        content: rewrittenContent,
+        title: seo.title,
+        excerpt: seo.description,
+        categories: seo.categories,
+        tags: seo.tags,
+        meta: {
+          _yoast_wpseo_metadesc: seo.description,
+          _yoast_wpseo_focuskw: seo.keywords.join(', ')
+        }
+      });
       
     } catch (error) {
       console.error('Error publishing post:', error);

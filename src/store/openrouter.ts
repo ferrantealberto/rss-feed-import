@@ -9,6 +9,14 @@ export interface AIModel {
   completionCost: string;
 }
 
+interface SEOMetadata {
+  title: string;
+  description: string;
+  keywords: string[];
+  categories: string[];
+  tags: string[];
+}
+
 export type RewriteTone = 'professional' | 'casual' | 'academic' | 'journalistic' | 'creative';
 
 interface OpenRouterStore {
@@ -25,7 +33,7 @@ interface OpenRouterStore {
   setError: (error: string | null) => void;
   verifyApiKey: () => Promise<boolean>;
   fetchModels: () => Promise<void>;
-  rewriteContent: (content: string) => Promise<string>;
+  rewriteContent: (content: string) => Promise<{content: string; seo: SEOMetadata}>;
 }
 
 export const useOpenRouterStore = create<OpenRouterStore>()(
