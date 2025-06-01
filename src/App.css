@@ -348,3 +348,47 @@ body {
 .delete-site:hover {
   background: #c82333;
 }
+
+/* Scheduled Posts Styles */
+.scheduled-posts {
+  margin-top: 24px;
+}
+
+.scheduled-post-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.scheduled-post-row:last-child {
+  border-bottom: none;
+}
+
+.post-status {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-scheduled {
+  background: var(--primary-color);
+  color: white;
+}
+
+.status-paused {
+  background: var(--warning-color);
+  color: white;
+}
+
+.status-published {
+  background: var(--secondary-color);
+  color: white;
+}
+
+.status-error {
+  background: var(--error-color);
+  color: white;
+}

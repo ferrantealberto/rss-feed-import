@@ -1,13 +1,34 @@
 import { useState } from 'react';
 import { useSitesStore } from '../store/sites';
 import { useOpenRouterStore } from '../store/openrouter';
+import { useScheduledPostsStore, ScheduledPost } from '../store/scheduledPosts';
 import { CSVImport } from '../components/CSVImport';
+
+interface Feed {
+  id: string;
+  name: string;
+  url: string;
+  frequency: string;
+  status: string;
+}
 
 export function FeedManager() {
   const { sites } = useSitesStore();
   const { rewriteContent } = useOpenRouterStore();
+  const { posts: scheduledPosts, addPost, removePost, togglePostStatus, reschedulePost } = useScheduledPostsStore();
   const [selectedSite, setSelectedSite] = useState('');
   const [lastPostTime, setLastPostTime] = useState<{[key: string]: number}>({});
+  const [feeds, setFeeds] = useState<Feed[]>([]);
+
+  const handleDeleteFeed = (feedId: string) => {
+    if (window.confirm('Are you sure you want to delete this feed? This will also remove all scheduled posts from this feed.')) {
+      setFeeds(feeds.filter(feed => feed.id !== feedId));
+      // Remove all scheduled posts from this feed
+      scheduledPosts
+        .filter(post => post.feedId === feedId)
+        .forEach(post => removePost(post.id));
+    }
+  };
 
   const handlePublishToSite = async (post: any) => {
     if (!selectedSite) {
@@ -116,6 +137,9 @@ export function FeedManager() {
 
       <div className="card">
         <h2 className="card-title">Managed Feeds</h2>
+        {feeds.length === 0 ? (
+          <p>No feeds configured yet. Add your first feed above.</p>
+        ) : (
         <table className="table">
           <thead>
             <tr>
@@ -128,14 +152,16 @@ export function FeedManager() {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>Tech News</td>
-              <td>https://example.com/feed</td>
-              <td>Daily</td>
+            {feeds.map(feed => (
+            <tr key={feed.id}>
+              <td>{feed.name}</td>
+              <td>{feed.url}</td>
+              <td>{feed.frequency}</td>
               <td>
                 <select 
                   className="form-input"
                   value={selectedSite}
+                  value={feed.siteId || ''}
                   onChange={(e) => setSelectedSite(e.target.value)}
                 >
                   <option value="">Select a site</option>
@@ -146,24 +172,87 @@ export function FeedManager() {
                   ))}
                 </select>
               </td>
-              <td>Active</td>
+              <td>{feed.status}</td>
               <td>
                 <div className="button-group">
                   <button 
                     className="button button-secondary"
                     onClick={() => handlePublishToSite({
-                      feedId: 'tech-news',
+                      feedId: feed.id,
                       content: 'Sample content'
                     })}
                   >
                     Test Post
                   </button>
                   <button className="button button-secondary">Edit</button>
+                  <button 
+                    className="button button-secondary"
+                    onClick={() => handleDeleteFeed(feed.id)}
+                  >
+                    Delete
+                  </button>
                 </div>
               </td>
             </tr>
+            ))}
           </tbody>
-        </table>
+        </table>)}
+      </div>
+      
+      <div className="card">
+        <h2 className="card-title">Scheduled Posts</h2>
+        {scheduledPosts.length === 0 ? (
+          <p>No posts scheduled.</p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Feed</th>
+                <th>Target Site</th>
+                <th>Scheduled For</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {scheduledPosts.map(post => (
+                <tr key={post.id}>
+                  <td>{post.title}</td>
+                  <td>{post.feedName}</td>
+                  <td>{post.siteName}</td>
+                  <td>
+                    <input 
+                      type="datetime-local" 
+                      value={post.scheduledDate}
+                      onChange={(e) => reschedulePost(post.id, e.target.value)}
+                      disabled={post.status === 'published'}
+                    />
+                  </td>
+                  <td>{post.status}</td>
+                  <td>
+                    <div className="button-group">
+                      <button
+                        className="button button-secondary"
+                        onClick={() => togglePostStatus(post.id)}
+                        disabled={post.status === 'published'}
+                      >
+                        {post.status === 'scheduled' ? 'Pause' : 'Resume'}
+                      </button>
+                      <button
+                        className="button button-secondary"
+                        onClick={() => removePost(post.id)}
+                        disabled={post.status === 'published'}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
