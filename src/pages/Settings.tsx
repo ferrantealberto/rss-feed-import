@@ -1,137 +1,210 @@
-import { useForm } from 'react-hook-form';
-import { useSettingsStore } from '../store/settings';
-
-const models = [
-  { value: 'anthropic/claude-2', label: 'Claude 2' },
-  { value: 'google/palm-2-chat-bison', label: 'PaLM 2 Chat' },
-  { value: 'meta-llama/llama-2-70b-chat', label: 'Llama 2 70B' },
-  { value: 'openai/gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-  { value: 'openai/gpt-4', label: 'GPT-4' }
-];
-
-const tones = [
-  { value: 'professional', label: 'Professional' },
-  { value: 'casual', label: 'Casual' },
-  { value: 'academic', label: 'Academic' },
-  { value: 'journalistic', label: 'Journalistic' },
-  { value: 'creative', label: 'Creative' }
-];
+import { useForm, Controller } from 'react-hook-form';
+import { useOpenRouterStore } from '../store/openrouter';
+import { useSitesStore, WordPressSite } from '../store/sites';
+import { v4 as uuidv4 } from 'uuid';
 
 export function Settings() {
-  const settings = useSettingsStore();
-  const { register, handleSubmit } = useForm({
-    defaultValues: settings
-  });
+  const { apiKey, setApiKey, verifyApiKey, fetchModels, availableModels, selectedModel, setSelectedModel } = useOpenRouterStore();
+  const { sites, addSite, updateSite, deleteSite } = useSitesStore();
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const onSubmit = (data: any) => {
-    settings.updateSettings(data);
+  const handleVerifyKey = async () => {
+    setIsVerifying(true);
+    try {
+      const isValid = await verifyApiKey();
+      if (isValid) {
+        await fetchModels();
+      }
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const filteredModels = availableModels.filter(model => 
+    model.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const addNewSite = () => {
+    const newSite: WordPressSite = {
+      id: uuidv4(),
+      name: '',
+      url: '',
+      username: '',
+      password: '',
+      schedule: {
+        enabled: false,
+        frequency: 'daily'
+      }
+    };
+    addSite(newSite);
   };
 
   return (
     <div>
-      <h1 className="card-title">Settings</h1>
+      <div className="settings-header">
+        <h1>Settings</h1>
+      </div>
 
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="card">
-          <h2 className="card-title">WordPress Connection</h2>
-          <div className="form-group">
-            <label className="form-label">WordPress Site URL</label>
-            <input 
-              type="url" 
-              className="form-input"
-              placeholder="https://your-wordpress-site.com"
-              {...register('wordpressUrl')}
+      {/* API Settings */}
+      <div className="settings-section">
+        <h2>OpenRouter API Settings</h2>
+        <div className="api-key-section">
+          <label>API Key</label>
+          <div className="api-key-input">
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="Enter your OpenRouter API key"
             />
+            <button 
+              onClick={handleVerifyKey}
+              disabled={isVerifying || !apiKey}
+            >
+              {isVerifying ? 'Verifying...' : 'Verify'}
+            </button>
           </div>
-          
-          <div className="form-group">
-            <label className="form-label">WordPress Username</label>
-            <input 
-              type="text" 
-              className="form-input"
-              {...register('wordpressUsername')}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">WordPress Password</label>
-            <input 
-              type="password" 
-              className="form-input"
-              {...register('wordpressPassword')}
-            />
-            <p className="form-help">Use an application password for better security</p>
-          </div>
+          <small>Your API key is encrypted and never shared</small>
         </div>
 
-        <div className="card">
-          <h2 className="card-title">OpenRouter Configuration</h2>
-          <div className="form-group">
-            <label className="form-label">API Key</label>
-            <input 
-              type="password" 
-              className="form-input"
-              {...register('openrouterApiKey')}
+        {/* Model Selection */}
+        {availableModels.length > 0 && (
+          <div className="model-selection">
+            <h3>AI Model Selection</h3>
+            <input
+              type="text"
+              placeholder="Search models..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="model-search"
             />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">AI Model</label>
-            <select className="form-input" {...register('selectedModel')}>
-              {models.map(model => (
-                <option key={model.value} value={model.value}>
-                  {model.label}
-                </option>
+            <div className="models-grid">
+              {filteredModels.map(model => (
+                <div 
+                  key={model.id}
+                  className={`model-card ${selectedModel === model.id ? 'selected' : ''}`}
+                  onClick={() => setSelectedModel(model.id)}
+                >
+                  <h4>{model.name}</h4>
+                  <div className="model-details">
+                    <span>Context: {model.context}</span>
+                    <span>Prompt: {model.promptCost}</span>
+                    <span>Completion: {model.completionCost}</span>
+                  </div>
+                </div>
               ))}
-            </select>
+            </div>
           </div>
+        )}
+      </div>
 
-          <div className="form-group">
-            <label className="form-label">Rewriting Tone</label>
-            <select className="form-input" {...register('rewriteTone')}>
-              {tones.map(tone => (
-                <option key={tone.value} value={tone.value}>
-                  {tone.label}
-                </option>
-              ))}
-            </select>
-          </div>
+      {/* WordPress Sites */}
+      <div className="settings-section">
+        <div className="sites-header">
+          <h2>WordPress Sites</h2>
+          <button onClick={addNewSite}>Add New Site</button>
         </div>
 
-        <div className="card">
-          <h2 className="card-title">Import Settings</h2>
-          <div className="form-group">
-            <label className="form-label">Max Posts per Import</label>
-            <input 
-              type="number" 
-              className="form-input" 
-              min="1" 
-              max="100" 
-              defaultValue="10"
-            />
-          </div>
-          
-          <div className="form-group">
-            <label className="form-label">Default Post Status</label>
-            <select className="form-input">
-              <option value="draft">Draft</option>
-              <option value="publish">Published</option>
-              <option value="pending">Pending Review</option>
-            </select>
-          </div>
+        <div className="sites-grid">
+          {sites.map(site => (
+            <div key={site.id} className="site-card">
+              <input
+                type="text"
+                value={site.name}
+                onChange={(e) => updateSite(site.id, { name: e.target.value })}
+                placeholder="Site Name"
+              />
+              <input
+                type="url"
+                value={site.url}
+                onChange={(e) => updateSite(site.id, { url: e.target.value })}
+                placeholder="WordPress URL"
+              />
+              <input
+                type="text"
+                value={site.username}
+                onChange={(e) => updateSite(site.id, { username: e.target.value })}
+                placeholder="Username"
+              />
+              <input
+                type="password"
+                value={site.password}
+                onChange={(e) => updateSite(site.id, { password: e.target.value })}
+                placeholder="Application Password"
+              />
 
-          <div className="form-group">
-            <label>
-              <input type="checkbox" defaultChecked />
-              Import Images Automatically
-            </label>
-          </div>
+              <div className="schedule-settings">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={site.schedule.enabled}
+                    onChange={(e) => updateSite(site.id, {
+                      schedule: { ...site.schedule, enabled: e.target.checked }
+                    })}
+                  />
+                  Enable Scheduling
+                </label>
+
+                {site.schedule.enabled && (
+                  <div className="schedule-options">
+                    <select
+                      value={site.schedule.frequency}
+                      onChange={(e) => updateSite(site.id, {
+                        schedule: { ...site.schedule, frequency: e.target.value }
+                      })}
+                    >
+                      <option value="hourly">Hourly</option>
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                    </select>
+
+                    {site.schedule.frequency === 'daily' && (
+                      <input
+                        type="time"
+                        value={site.schedule.time}
+                        onChange={(e) => updateSite(site.id, {
+                          schedule: { ...site.schedule, time: e.target.value }
+                        })}
+                      />
+                    )}
+
+                    {site.schedule.frequency === 'weekly' && (
+                      <div className="day-selector">
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                          <label key={day}>
+                            <input
+                              type="checkbox"
+                              checked={site.schedule.days?.includes(day)}
+                              onChange={(e) => {
+                                const days = site.schedule.days || [];
+                                const newDays = e.target.checked
+                                  ? [...days, day]
+                                  : days.filter(d => d !== day);
+                                updateSite(site.id, {
+                                  schedule: { ...site.schedule, days: newDays }
+                                });
+                              }}
+                            />
+                            {day}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <button 
+                onClick={() => deleteSite(site.id)}
+                className="delete-site"
+              >
+                Delete Site
+              </button>
+            </div>
+          ))}
         </div>
-
-        <button type="submit" className="button button-primary">
-          Save Settings
-        </button>
-      </form>
+      </div>
     </div>
   );
 }
