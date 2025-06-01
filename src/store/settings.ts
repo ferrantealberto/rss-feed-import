@@ -8,8 +8,6 @@ interface Settings {
   openrouterApiKey: string;
   selectedModel: string;
   rewriteTone: string;
-  importFrequency: 'hourly' | 'daily' | 'weekly';
-  maxPostsPerImport: number;
 }
 
 interface SettingsStore extends Settings {
@@ -25,8 +23,6 @@ export const useSettingsStore = create<SettingsStore>()(
       openrouterApiKey: '',
       selectedModel: 'anthropic/claude-2',
       rewriteTone: 'professional',
-      importFrequency: 'daily',
-      maxPostsPerImport: 10,
       updateSettings: (newSettings) => set((state) => ({ ...state, ...newSettings })),
     }),
     {

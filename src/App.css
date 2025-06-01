@@ -130,6 +130,12 @@ body {
   box-shadow: 0 0 0 2px rgba(34,113,177,0.2);
 }
 
+.form-help {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
 /* Buttons */
 .button {
   display: inline-block;
