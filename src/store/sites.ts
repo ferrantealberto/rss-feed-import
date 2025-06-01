@@ -7,6 +7,12 @@ export interface WordPressSite {
   url: string;
   username: string;
   password: string;
+  importSettings: {
+    contentLength: 'full' | 'excerpt';
+    excerptLength: number;
+    importImages: boolean;
+    useFirstImageAsFeatured: boolean;
+  };
   schedule: {
     enabled: boolean;
     frequency: 'hourly' | 'daily' | 'weekly';

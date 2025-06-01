@@ -9,14 +9,18 @@ export interface AIModel {
   completionCost: string;
 }
 
+export type RewriteTone = 'professional' | 'casual' | 'academic' | 'journalistic' | 'creative';
+
 interface OpenRouterStore {
   apiKey: string;
   selectedModel: string | null;
+  rewriteTone: RewriteTone;
   availableModels: AIModel[]; 
   isLoading: boolean;
   error: string | null;
   setApiKey: (key: string) => void;
   setSelectedModel: (modelId: string) => void;
+  setRewriteTone: (tone: RewriteTone) => void;
   setAvailableModels: (models: AIModel[]) => void;
   setError: (error: string | null) => void;
   verifyApiKey: () => Promise<boolean>;
@@ -28,12 +32,14 @@ export const useOpenRouterStore = create<OpenRouterStore>()(
     (set, get) => ({
       apiKey: '',
       selectedModel: null,
+      rewriteTone: 'professional',
       availableModels: [],
       isLoading: false,
       error: null,
       
       setApiKey: (key) => set({ apiKey: key }),
       setSelectedModel: (modelId) => set({ selectedModel: modelId }),
+      setRewriteTone: (tone) => set({ rewriteTone: tone }),
       setAvailableModels: (models) => set({ availableModels: models }),
       setError: (error) => set({ error }),
       

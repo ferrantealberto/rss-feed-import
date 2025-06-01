@@ -12,6 +12,8 @@ export function Settings() {
     availableModels,
     selectedModel,
     setSelectedModel,
+    rewriteTone,
+    setRewriteTone,
     isLoading,
     error
   } = useOpenRouterStore();
@@ -33,6 +35,12 @@ export function Settings() {
       url: '',
       username: '',
       password: '',
+      importSettings: {
+        contentLength: 'full',
+        excerptLength: 150,
+        importImages: true,
+        useFirstImageAsFeatured: true
+      },
       schedule: {
         enabled: false,
         frequency: 'daily'
@@ -79,6 +87,22 @@ export function Settings() {
         {availableModels.length > 0 && (
           <div className="model-selection">
             <h3>AI Model Selection</h3>
+            
+            <div className="rewrite-tone" style={{ marginBottom: '20px' }}>
+              <label>Content Rewrite Tone:</label>
+              <select 
+                value={rewriteTone}
+                onChange={(e) => setRewriteTone(e.target.value as any)}
+                style={{ marginLeft: '10px' }}
+              >
+                <option value="professional">Professional</option>
+                <option value="casual">Casual</option>
+                <option value="academic">Academic</option>
+                <option value="journalistic">Journalistic</option>
+                <option value="creative">Creative</option>
+              </select>
+            </div>
+            
             <input
               type="text"
               placeholder="Search models..."
@@ -140,6 +164,66 @@ export function Settings() {
                 onChange={(e) => updateSite(site.id, { password: e.target.value })}
                 placeholder="Application Password"
               />
+
+              <div className="import-settings" style={{ marginTop: '15px', padding: '15px', border: '1px solid #ddd', borderRadius: '4px' }}>
+                <h4 style={{ margin: '0 0 10px 0' }}>Import Settings</h4>
+                
+                <div style={{ marginBottom: '10px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px' }}>Content Length:</label>
+                  <select
+                    value={site.importSettings.contentLength}
+                    onChange={(e) => updateSite(site.id, {
+                      importSettings: { ...site.importSettings, contentLength: e.target.value as 'full' | 'excerpt' }
+                    })}
+                  >
+                    <option value="full">Full Content</option>
+                    <option value="excerpt">Excerpt Only</option>
+                  </select>
+                </div>
+                
+                {site.importSettings.contentLength === 'excerpt' && (
+                  <div style={{ marginBottom: '10px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px' }}>Excerpt Length (words):</label>
+                    <input
+                      type="number"
+                      min="50"
+                      max="500"
+                      value={site.importSettings.excerptLength}
+                      onChange={(e) => updateSite(site.id, {
+                        importSettings: { ...site.importSettings, excerptLength: parseInt(e.target.value) }
+                      })}
+                    />
+                  </div>
+                )}
+                
+                <div style={{ marginBottom: '10px' }}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={site.importSettings.importImages}
+                      onChange={(e) => updateSite(site.id, {
+                        importSettings: { ...site.importSettings, importImages: e.target.checked }
+                      })}
+                    />
+                    Import Images
+                  </label>
+                </div>
+                
+                {site.importSettings.importImages && (
+                  <div>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={site.importSettings.useFirstImageAsFeatured}
+                        onChange={(e) => updateSite(site.id, {
+                          importSettings: { ...site.importSettings, useFirstImageAsFeatured: e.target.checked }
+                        })}
+                      />
+                      Use First Image as Featured Image
+                    </label>
+                  </div>
+                )}
+              </div>
 
               <div className="schedule-settings">
                 <label>
