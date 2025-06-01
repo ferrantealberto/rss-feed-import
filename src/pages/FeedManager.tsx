@@ -70,8 +70,15 @@ export function FeedManager() {
   };
 
   const handlePublishToSite = async (post: any) => {
-    if (!selectedSite) {
-      alert('Please select a site first');
+    const site = sites.find(s => s.id === selectedSite);
+    
+    if (!site) {
+      alert('Please select a valid WordPress site first');
+      return;
+    }
+
+    if (!site.url || !site.username || !site.password) {
+      alert('Selected site is missing required credentials. Please check site settings.');
       return;
     }
 
@@ -81,36 +88,53 @@ export function FeedManager() {
     const now = Date.now();
     
     if (now - lastTime < 3600000) { // 1 hour minimum between posts from same feed
-      alert('Please wait before posting another article from this feed to the same site');
+      alert(`Please wait at least 1 hour between posts from the same feed to ${site.name}`);
       return;
     }
 
     try {
       // Rewrite content before publishing
       const { content: rewrittenContent, seo } = await rewriteContent(post.content);
-      
-      // Update last post time
-      setLastPostTime({
-        ...lastPostTime,
-        [siteKey]: now
-      });
 
-      // TODO: Implement actual WordPress post creation
-      console.log('Publishing to site:', selectedSite, {
-        content: rewrittenContent,
+      // Prepare the post data
+      const postData = {
         title: seo.title,
+        content: rewrittenContent,
         excerpt: seo.description,
+        status: 'draft',
         categories: seo.categories,
         tags: seo.tags,
         meta: {
           _yoast_wpseo_metadesc: seo.description,
           _yoast_wpseo_focuskw: seo.keywords.join(', ')
         }
+      };
+
+      // Make the WordPress REST API request
+      const response = await fetch(`${site.url}/wp-json/wp/v2/posts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic ' + btoa(`${site.username}:${site.password}`)
+        },
+        body: JSON.stringify(postData)
       });
+
+      if (!response.ok) {
+        throw new Error(`WordPress API error: ${response.statusText}`);
+      }
+      
+      // Update last post time
+      setLastPostTime({
+        ...lastPostTime,
+        [siteKey]: now
+      });
+      
+      alert(`Post successfully created as draft on ${site.name}`);
       
     } catch (error) {
       console.error('Error publishing post:', error);
-      alert('Failed to publish post');
+      alert(`Failed to publish post: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
