@@ -59,7 +59,7 @@ export const useFeedsStore = create<FeedsStore>()(
           const xml = parser.parseFromString(text, 'text/xml');
           
           const items = Array.from(xml.querySelectorAll('item'));
-          const importedCount = 0;
+          let importedCount = 0;
           
           for (const item of items) {
             const title = item.querySelector('title')?.textContent;
