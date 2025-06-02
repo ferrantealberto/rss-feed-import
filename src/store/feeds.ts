@@ -54,8 +54,9 @@ export const useFeedsStore = create<FeedsStore>()(
         }
 
         try {
-          // Call the Edge Function to fetch and parse the feed
-          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/import-feed`, {
+          // Call Edge Function with proper error handling
+          const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/import-feed`;
+          const response = await fetch(functionUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -64,19 +65,19 @@ export const useFeedsStore = create<FeedsStore>()(
             body: JSON.stringify({ feedUrl: feed.url })
           });
           
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+          const data = await response.json();
+          
+          if (!response.ok || data.error) {
+            throw new Error(data.error || `HTTP error! status: ${response.status}`);
           }
           
-          const { items, error } = await response.json();
-          
-          if (error) {
-            throw new Error(error);
+          if (!data.items || !Array.isArray(data.items)) {
+            throw new Error('Invalid response format from feed parser');
           }
           
           let importedCount = 0;
           
-          for (const item of items) {
+          for (const item of data.items) {
             const { title, link, description: content, pubDate } = item;
             
             if (title && content) {
@@ -100,7 +101,7 @@ export const useFeedsStore = create<FeedsStore>()(
                     status: 'pending'
                   });
                   
-                if (!error) {
+                if (!insertError) {
                   importedCount++;
                 }
               }
