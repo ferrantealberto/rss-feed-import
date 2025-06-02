@@ -4,6 +4,7 @@ import { useFeedsStore } from '../store/feeds';
 import { useOpenRouterStore } from '../store/openrouter';
 import { useScheduledPostsStore, ScheduledPost } from '../store/scheduledPosts';
 import { CSVImport } from '../components/CSVImport';
+import { useState } from 'react';
 
 interface ImportedFeed {
   categoria_feed: string;
@@ -29,13 +30,77 @@ interface Feed {
   priority?: number;
 }
 
+interface EditingFeed extends Feed {
+  postStatus: 'draft' | 'publish' | 'pending' | 'private';
+  scheduledTime?: string;
+  scheduledDays?: string[];
+}
+
 export function FeedManager() {
   const { sites } = useSitesStore();
   const { feeds, addFeeds, updateFeed, deleteFeed } = useFeedsStore();
   const { rewriteContent } = useOpenRouterStore();
   const { posts: scheduledPosts, addPost, removePost, togglePostStatus, reschedulePost } = useScheduledPostsStore();
+  const [editingFeed, setEditingFeed] = useState<EditingFeed | null>(null);
   const [lastPostTime, setLastPostTime] = useState<{[key: string]: number}>({});
   const [selectedSite, setSelectedSite] = useState<string>('');
+
+  const handleEditFeed = (feed: Feed) => {
+    setEditingFeed({
+      ...feed,
+      postStatus: 'draft',
+      scheduledTime: '09:00',
+      scheduledDays: ['Mon', 'Wed', 'Fri']
+    });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingFeed) return;
+
+    updateFeed(editingFeed.id, {
+      ...editingFeed
+    });
+
+    // Schedule posts if needed
+    if (editingFeed.scheduledTime && editingFeed.scheduledDays?.length) {
+      const site = sites.find(s => s.id === editingFeed.siteId);
+      if (site) {
+        editingFeed.scheduledDays.forEach(day => {
+          // Create a scheduled post for each selected day
+          const scheduledDate = getNextDayTime(day, editingFeed.scheduledTime!);
+          addPost({
+            feedId: editingFeed.id,
+            feedName: editingFeed.name,
+            title: `Scheduled post from ${editingFeed.name}`,
+            content: '', // Will be fetched when publishing
+            siteId: editingFeed.siteId!,
+            siteName: site.name,
+            scheduledDate: scheduledDate,
+            rewriteTone: 'professional',
+          });
+        });
+      }
+    }
+
+    setEditingFeed(null);
+  };
+
+  const getNextDayTime = (day: string, time: string): string => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const today = new Date();
+    const targetDay = days.indexOf(day);
+    const currentDay = today.getDay();
+    
+    let daysToAdd = targetDay - currentDay;
+    if (daysToAdd <= 0) daysToAdd += 7;
+    
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + daysToAdd);
+    const [hours, minutes] = time.split(':');
+    targetDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    
+    return targetDate.toISOString().slice(0, 16);
+  };
 
   const handleCSVImport = async (importedFeeds: ImportedFeed[]) => {
     try {
@@ -242,7 +307,12 @@ export function FeedManager() {
                   >
                     Test Post
                   </button>
-                  <button className="button button-secondary">Edit</button>
+                  <button 
+                    className="button button-secondary"
+                    onClick={() => handleEditFeed(feed)}
+                  >
+                    Edit
+                  </button>
                   <button 
                     className="button button-secondary"
                     onClick={() => handleDeleteFeed(feed.id)}
@@ -257,6 +327,86 @@ export function FeedManager() {
         </table>)}
       </div>
       
+      {/* Edit Feed Modal */}
+      {editingFeed && (
+        <div className="modal" style={{ display: 'block' }}>
+          <div className="modal-content">
+            <h3>Edit Feed: {editingFeed.name}</h3>
+            
+            <div className="form-group">
+              <label>Post Status</label>
+              <select
+                value={editingFeed.postStatus}
+                onChange={(e) => setEditingFeed({
+                  ...editingFeed,
+                  postStatus: e.target.value as 'draft' | 'publish' | 'pending' | 'private'
+                })}
+              >
+                <option value="draft">Draft</option>
+                <option value="publish">Published</option>
+                <option value="pending">Pending Review</option>
+                <option value="private">Private</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Schedule Posts</label>
+              <div>
+                <label>Time:</label>
+                <input
+                  type="time"
+                  value={editingFeed.scheduledTime}
+                  onChange={(e) => setEditingFeed({
+                    ...editingFeed,
+                    scheduledTime: e.target.value
+                  })}
+                />
+              </div>
+              
+              <div style={{ marginTop: '10px' }}>
+                <label>Days:</label>
+                <div className="day-selector">
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                    <label key={day}>
+                      <input
+                        type="checkbox"
+                        checked={editingFeed.scheduledDays?.includes(day)}
+                        onChange={(e) => {
+                          const days = editingFeed.scheduledDays || [];
+                          const newDays = e.target.checked
+                            ? [...days, day]
+                            : days.filter(d => d !== day);
+                          setEditingFeed({
+                            ...editingFeed,
+                            scheduledDays: newDays
+                          });
+                        }}
+                      />
+                      {day}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            <div className="button-group" style={{ marginTop: '20px' }}>
+              <button 
+                className="button button-primary"
+                onClick={handleSaveEdit}
+              >
+                Save Changes
+              </button>
+              <button
+                className="button button-secondary"
+                onClick={() => setEditingFeed(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="card">
         <h2 className="card-title">Scheduled Posts</h2>
         {scheduledPosts.length === 0 ? (
