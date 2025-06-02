@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { supabase } from '../lib/supabaseClient';
 
 export interface Feed {
   id: string;
@@ -47,22 +48,19 @@ export const useFeedsStore = create<FeedsStore>()(
       importFeed: async (id) => {
         const state = get();
         const feed = state.feeds.find(f => f.id === id);
-        
         if (!feed) {
           throw new Error('Feed not found');
         }
 
         try {
-          // Fetch the RSS feed
           const response = await fetch(feed.url);
           const text = await response.text();
           const parser = new DOMParser();
           const xml = parser.parseFromString(text, 'text/xml');
           
-          // Extract items
           const items = Array.from(xml.querySelectorAll('item'));
+          const importedCount = 0;
           
-          // Process each item
           for (const item of items) {
             const title = item.querySelector('title')?.textContent;
             const link = item.querySelector('link')?.textContent;
@@ -70,17 +68,40 @@ export const useFeedsStore = create<FeedsStore>()(
             const pubDate = item.querySelector('pubDate')?.textContent;
             
             if (title && content) {
-              // Here you would typically save to your database
-              console.log('Imported:', { title, link, pubDate });
+              // Check for duplicates
+              const { data: existing } = await supabase
+                .from('imported_posts')
+                .select('id')
+                .eq('original_url', link)
+                .single();
+                
+              if (!existing) {
+                // Insert new post
+                const { data, error } = await supabase
+                  .from('imported_posts')
+                  .insert({
+                    feed_id: feed.id,
+                    title: title,
+                    content: content,
+                    original_url: link,
+                    published_at: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
+                    status: 'pending'
+                  });
+                  
+                if (!error) {
+                  importedCount++;
+                }
+              }
             }
           }
           
-          // Update feed status
           state.updateFeed(id, {
             lastImport: new Date().toISOString(),
-            nextImport: calculateNextImport(feed.frequency)
+            nextImport: calculateNextImport(feed.frequency),
+            totalImported: (feed.totalImported || 0) + importedCount
           });
 
+          return importedCount;
         } catch (error) {
           console.error('Import failed:', error);
           throw error;
