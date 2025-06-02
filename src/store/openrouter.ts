@@ -115,7 +115,19 @@ export const useOpenRouterStore = create<OpenRouterStore>()(
           }
 
           const data = await response.json();
-          return data.choices[0].message.content;
+          const rewrittenContent = data.choices[0].message.content;
+
+          // Return both the rewritten content and default SEO metadata
+          return {
+            content: rewrittenContent,
+            seo: {
+              title: '',
+              description: '',
+              keywords: [],
+              categories: [],
+              tags: []
+            }
+          };
           
         } catch (error) {
           console.error('Error rewriting content:', error);
