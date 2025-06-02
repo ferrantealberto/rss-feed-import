@@ -54,6 +54,12 @@ export const useFeedsStore = create<FeedsStore>()(
         }
 
         try {
+          // First check if user is authenticated
+          const { data: { user }, error: authError } = await supabase.auth.getUser();
+          if (authError || !user) {
+            throw new Error('User must be authenticated to import feeds');
+          }
+
           // Call Edge Function with proper error handling
           const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/import-feed`;
           const response = await fetch(functionUrl, {
@@ -89,8 +95,8 @@ export const useFeedsStore = create<FeedsStore>()(
                 .limit(1);
                 
               if (!existing || existing.length === 0) {
-                // Insert new post
-                const { data, error } = await supabase
+                // Insert new post with explicit user_id
+                const { error: insertError } = await supabase
                   .from('imported_posts')
                   .insert({
                     feed_id: feed.id,
@@ -98,13 +104,15 @@ export const useFeedsStore = create<FeedsStore>()(
                     content: content,
                     original_url: link,
                     published_at: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
-                    status: 'pending'
+                    status: 'pending',
+                    user_id: user.id // Explicitly set the user_id
                   });
                   
-                if (!error) {
+                if (!insertError) {
                   importedCount++;
                 } else {
-                  console.error('Error inserting post:', error.message);
+                  console.error('Error inserting post:', insertError.message);
+                  throw new Error(`Failed to insert post: ${insertError.message}`);
                 }
               }
             }
