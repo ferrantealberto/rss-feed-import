@@ -101,8 +101,10 @@ export const useFeedsStore = create<FeedsStore>()(
                     status: 'pending'
                   });
                   
-                if (!insertError) {
+                if (!error) {
                   importedCount++;
+                } else {
+                  console.error('Error inserting post:', error.message);
                 }
               }
             }
