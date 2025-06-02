@@ -153,6 +153,12 @@ export function FeedManager() {
 
   const handleImportNow = async (feedId: string) => {
     try {
+      // Check authentication first
+      const { data: { session }, error: authError } = await supabase.auth.getSession();
+      if (authError || !session) {
+        throw new Error('User must be authenticated to import feeds');
+      }
+
       const feed = feeds.find(f => f.id === feedId);
       if (!feed) {
         throw new Error('Feed not found');
