@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSitesStore } from '../store/sites';
 import { useFeedsStore } from '../store/feeds';
 import { useOpenRouterStore } from '../store/openrouter';
+import { useFeedImportsStore } from '../store/feedImports';
 import { useScheduledPostsStore, ScheduledPost } from '../store/scheduledPosts';
 import { CSVImport } from '../components/CSVImport';
 
@@ -40,6 +41,7 @@ export function FeedManager() {
   const { feeds, addFeeds, updateFeed, deleteFeed } = useFeedsStore();
   const { rewriteContent } = useOpenRouterStore();
   const { posts: scheduledPosts, addPost, removePost, togglePostStatus, reschedulePost } = useScheduledPostsStore();
+  const { imports, addImport, importFeed, scheduleImport } = useFeedImportsStore();
   const [editingFeed, setEditingFeed] = useState<EditingFeed | null>(null);
   const [lastPostTime, setLastPostTime] = useState<{[key: string]: number}>({});
   const [selectedSite, setSelectedSite] = useState<string>('');
@@ -55,6 +57,13 @@ export function FeedManager() {
 
   const handleSaveEdit = () => {
     if (!editingFeed) return;
+
+    // Add or update import schedule
+    const existingImport = imports.find(imp => imp.feedId === editingFeed.id);
+    if (!existingImport) {
+      addImport(editingFeed.id, editingFeed.name);
+    }
+    scheduleImport(editingFeed.id, editingFeed.frequency);
 
     updateFeed(editingFeed.id, {
       ...editingFeed
@@ -130,6 +139,15 @@ export function FeedManager() {
       scheduledPosts
         .filter(post => post.feedId === feedId)
         .forEach(post => removePost(post.id));
+    }
+  };
+
+  const handleImportNow = async (feedId: string) => {
+    try {
+      await importFeed(feedId);
+      alert('Feed import started successfully');
+    } catch (error) {
+      alert('Failed to import feed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
@@ -296,6 +314,12 @@ export function FeedManager() {
               <td>
                 <div className="button-group">
                   <button 
+                    className="button button-primary"
+                    onClick={() => handleImportNow(feed.id)}
+                  >
+                    Import Now
+                  </button>
+                  <button 
                     className="button button-secondary"
                     onClick={() => handlePublishToSite({
                       feedId: feed.id,
@@ -455,6 +479,41 @@ export function FeedManager() {
                       </button>
                     </div>
                   </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      
+      <div className="card">
+        <h2 className="card-title">Import History</h2>
+        {imports.length === 0 ? (
+          <p>No imports yet.</p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Feed</th>
+                <th>Last Import</th>
+                <th>Next Import</th>
+                <th>Status</th>
+                <th>Import Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              {imports.map(imp => (
+                <tr key={imp.id}>
+                  <td>{imp.feedName}</td>
+                  <td>{imp.lastImport ? new Date(imp.lastImport).toLocaleString() : 'Never'}</td>
+                  <td>{imp.nextImport ? new Date(imp.nextImport).toLocaleString() : 'Not scheduled'}</td>
+                  <td>
+                    <span className={`status-${imp.status}`}>
+                      {imp.status}
+                      {imp.error && <span title={imp.error}>⚠️</span>}
+                    </span>
+                  </td>
+                  <td>{imp.importCount}</td>
                 </tr>
               ))}
             </tbody>

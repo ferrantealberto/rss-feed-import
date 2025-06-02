@@ -179,6 +179,22 @@ body {
   background-color: #e0e0e0;
 }
 
+/* Import Status Styles */
+.status-active {
+  color: var(--secondary-color);
+  font-weight: 500;
+}
+
+.status-paused {
+  color: var(--warning-color);
+  font-weight: 500;
+}
+
+.status-error {
+  color: var(--error-color);
+  font-weight: 500;
+}
+
 /* Tables */
 .table {
   width: 100%;
