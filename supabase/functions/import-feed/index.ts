@@ -1,11 +1,10 @@
-// @ts-ignore
-import { DOMParser } from 'https://deno.land/x/deno_dom/deno-dom-wasm.ts';
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { DOMParser } from 'npm:deno-dom';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 
 serve(async (req) => {
@@ -36,7 +35,7 @@ serve(async (req) => {
     
     // Parse XML
     const parser = new DOMParser();
-    const xml = parser.parseFromString(text, 'text/xml');
+    const xml = parser.parseFromString(text, 'application/xml');
     
     if (!xml) {
       throw new Error('Failed to parse XML');
