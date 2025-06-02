@@ -35,6 +35,7 @@ export function FeedManager() {
   const { rewriteContent } = useOpenRouterStore();
   const { posts: scheduledPosts, addPost, removePost, togglePostStatus, reschedulePost } = useScheduledPostsStore();
   const [lastPostTime, setLastPostTime] = useState<{[key: string]: number}>({});
+  const [selectedSite, setSelectedSite] = useState<string>('');
 
   const handleCSVImport = async (importedFeeds: ImportedFeed[]) => {
     try {
@@ -69,7 +70,7 @@ export function FeedManager() {
   };
 
   const handlePublishToSite = async (post: any) => {
-    const site = sites.find(s => s.id === selectedSite);
+    const site = sites.find(s => s.id === post.siteId);
     
     if (!site) {
       alert('Please select a valid WordPress site first');
@@ -82,7 +83,7 @@ export function FeedManager() {
     }
 
     // Check if we've posted to this site recently from this feed
-    const siteKey = `${selectedSite}-${post.feedId}`;
+    const siteKey = `${post.siteId}-${post.feedId}`;
     const lastTime = lastPostTime[siteKey] || 0;
     const now = Date.now();
     
