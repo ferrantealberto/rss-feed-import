@@ -1,4 +1,5 @@
-import { DOMParser } from 'npm:deno-dom';
+// @deno-types="npm:@types/xml2js"
+import { parseString } from 'npm:xml2js';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -33,35 +34,39 @@ serve(async (req) => {
 
     const text = await response.text();
     
-    // Parse XML
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(text, 'application/xml');
-    
-    if (!xml) {
-      throw new Error('Failed to parse XML');
-    }
+    // Parse XML using xml2js
+    const items = await new Promise((resolve, reject) => {
+      parseString(text, (err, result) => {
+        if (err) {
+          reject(new Error('Failed to parse XML: ' + err.message));
+          return;
+        }
 
-    // Try to find items in both RSS and Atom formats
-    const items = [];
-    const entries = xml.querySelectorAll('item, entry');
+        try {
+          // Handle both RSS and Atom formats
+          const entries = [];
+          
+          if (result.rss?.channel?.[0]?.item) {
+            // RSS format
+            entries.push(...result.rss.channel[0].item);
+          } else if (result.feed?.entry) {
+            // Atom format
+            entries.push(...result.feed.entry);
+          }
 
-    for (const entry of entries) {
-      // Handle both RSS and Atom formats
-      const item = {
-        title: entry.querySelector('title')?.textContent || '',
-        link: entry.querySelector('link')?.textContent || entry.querySelector('link')?.getAttribute('href') || '',
-        description: entry.querySelector('description, content, summary')?.textContent || '',
-        pubDate: entry.querySelector('pubDate, published, updated')?.textContent || new Date().toISOString()
-      };
+          const parsedItems = entries.map(entry => ({
+            title: getFirstValue(entry.title),
+            link: getFirstValue(entry.link) || entry.link?.[0]?.['$']?.href,
+            description: getFirstValue(entry.description) || getFirstValue(entry['content:encoded']) || getFirstValue(entry.content),
+            pubDate: getFirstValue(entry.pubDate) || getFirstValue(entry.published) || new Date().toISOString()
+          })).filter(item => item.title && item.description);
 
-      // Clean up content
-      item.description = item.description.trim();
-      
-      // Only add items with required fields
-      if (item.title && item.description) {
-        items.push(item);
-      }
-    }
+          resolve(parsedItems);
+        } catch (error) {
+          reject(new Error('Failed to process feed entries: ' + error.message));
+        }
+      });
+    });
 
     if (items.length === 0) {
       throw new Error('No valid items found in feed');
@@ -95,3 +100,11 @@ serve(async (req) => {
     );
   }
 });
+
+// Helper function to safely get the first value from an array or string
+function getFirstValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value[0]?._ || value[0] || '';
+  }
+  return value?.toString() || '';
+}
