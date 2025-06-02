@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSitesStore } from '../store/sites';
 import { useFeedsStore } from '../store/feeds';
 import { useOpenRouterStore } from '../store/openrouter';
@@ -45,6 +45,15 @@ export function FeedManager() {
   const [editingFeed, setEditingFeed] = useState<EditingFeed | null>(null);
   const [lastPostTime, setLastPostTime] = useState<{[key: string]: number}>({});
   const [selectedSite, setSelectedSite] = useState<string>('');
+
+  useEffect(() => {
+    // Set up periodic import check
+    const checkInterval = setInterval(() => {
+      useFeedsStore.getState().scheduleImports();
+    }, 60000); // Check every minute
+    
+    return () => clearInterval(checkInterval);
+  }, []);
 
   const handleEditFeed = (feed: Feed) => {
     setEditingFeed({
@@ -144,7 +153,12 @@ export function FeedManager() {
 
   const handleImportNow = async (feedId: string) => {
     try {
-      await importFeed(feedId);
+      const feed = feeds.find(f => f.id === feedId);
+      if (!feed) {
+        throw new Error('Feed not found');
+      }
+      
+      await useFeedsStore.getState().importFeed(feedId);
       alert('Feed import started successfully');
     } catch (error) {
       alert('Failed to import feed: ' + (error instanceof Error ? error.message : 'Unknown error'));
