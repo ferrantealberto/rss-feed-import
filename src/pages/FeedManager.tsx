@@ -115,7 +115,7 @@ export function FeedManager() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Basic ' + btoa(`${site.username}:${site.password}`)
+          'Authorization': 'Basic ' + btoa(`${site.username}:${site.password}`),
           'Accept': 'application/json',
           'Accept-Language': 'it-IT,it'
         },
