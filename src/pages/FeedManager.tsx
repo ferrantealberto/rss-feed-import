@@ -34,7 +34,6 @@ export function FeedManager() {
   const { feeds, addFeeds, updateFeed, deleteFeed } = useFeedsStore();
   const { rewriteContent } = useOpenRouterStore();
   const { posts: scheduledPosts, addPost, removePost, togglePostStatus, reschedulePost } = useScheduledPostsStore();
-  const [selectedSite, setSelectedSite] = useState('');
   const [lastPostTime, setLastPostTime] = useState<{[key: string]: number}>({});
 
   const handleCSVImport = async (importedFeeds: ImportedFeed[]) => {
@@ -212,7 +211,7 @@ export function FeedManager() {
               <td>
                 <select 
                   className="form-input"
-                  value={selectedSite}
+                  value={feed.siteId || ''}
                   onChange={(e) => {
                     updateFeed(feed.id, { siteId: e.target.value });
                   }}
@@ -232,7 +231,8 @@ export function FeedManager() {
                     className="button button-secondary"
                     onClick={() => handlePublishToSite({
                       feedId: feed.id,
-                      content: 'Sample content'
+                      content: 'Sample content',
+                      siteId: feed.siteId
                     })}
                   >
                     Test Post
