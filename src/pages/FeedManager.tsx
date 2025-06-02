@@ -96,12 +96,12 @@ export function FeedManager() {
       // Rewrite content before publishing
       const { content: rewrittenContent, seo } = await rewriteContent(post.content);
 
-      // Prepare the post data
+      // Prepara i dati del post
       const postData = {
         title: seo.title,
         content: rewrittenContent,
         excerpt: seo.description,
-        status: 'draft',
+        status: 'bozza',
         categories: seo.categories,
         tags: seo.tags,
         meta: {
@@ -110,31 +110,34 @@ export function FeedManager() {
         }
       };
 
-      // Make the WordPress REST API request
+      // Effettua la richiesta all'API REST di WordPress
       const response = await fetch(`${site.url}/wp-json/wp/v2/posts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic ' + btoa(`${site.username}:${site.password}`)
+          'Accept': 'application/json',
+          'Accept-Language': 'it-IT,it'
         },
         body: JSON.stringify(postData)
       });
 
       if (!response.ok) {
-        throw new Error(`WordPress API error: ${response.statusText}`);
+        const errorData = await response.json();
+        throw new Error(`Errore API WordPress: ${errorData.message || response.statusText}`);
       }
       
-      // Update last post time
+      // Aggiorna l'orario dell'ultimo post
       setLastPostTime({
         ...lastPostTime,
         [siteKey]: now
       });
       
-      alert(`Post successfully created as draft on ${site.name}`);
+      alert(`Post creato come bozza su ${site.name}`);
       
     } catch (error) {
       console.error('Error publishing post:', error);
-      alert(`Failed to publish post: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`Impossibile pubblicare il post: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
     }
   };
 
@@ -156,19 +159,19 @@ export function FeedManager() {
           <div className="form-group">
             <label className="form-label">Import Frequency</label>
             <select className="form-input">
-              <option value="hourly">Hourly</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
+              <option value="hourly">Ogni ora</option>
+              <option value="daily">Giornaliero</option>
+              <option value="weekly">Settimanale</option>
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">Target Site</label>
+            <label className="form-label">Sito di destinazione</label>
             <select 
               className="form-input"
               value={selectedSite}
               onChange={(e) => setSelectedSite(e.target.value)}
             >
-              <option value="">Select a site</option>
+              <option value="">Seleziona un sito</option>
               {sites.map(site => (
                 <option key={site.id} value={site.id}>
                   {site.name}
@@ -176,7 +179,7 @@ export function FeedManager() {
               ))}
             </select>
           </div>
-          <button type="submit" className="button button-primary">Add Feed</button>
+          <button type="submit" className="button button-primary">Aggiungi Feed</button>
         </form>
         
         <div style={{ marginTop: '20px', padding: '20px', borderTop: '1px solid #eee' }}>
