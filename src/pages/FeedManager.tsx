@@ -96,17 +96,20 @@ export function FeedManager() {
       // Rewrite content before publishing
       const { content: rewrittenContent, seo } = await rewriteContent(post.content);
 
+      // Fallback to original title if SEO title is not available
+      const postTitle = post.title || seo?.title || 'Untitled Post';
+
       // Prepara i dati del post
       const postData = {
-        title: seo.title,
+        title: postTitle,
         content: rewrittenContent,
-        excerpt: seo.description,
+        excerpt: seo?.description || '',
         status: 'bozza',
-        categories: seo.categories,
-        tags: seo.tags,
+        categories: seo?.categories || [],
+        tags: seo?.tags || [],
         meta: {
-          _yoast_wpseo_metadesc: seo.description,
-          _yoast_wpseo_focuskw: seo.keywords.join(', ')
+          _yoast_wpseo_metadesc: seo?.description || '',
+          _yoast_wpseo_focuskw: seo?.keywords?.join(', ') || ''
         }
       };
 
@@ -233,6 +236,7 @@ export function FeedManager() {
                     onClick={() => handlePublishToSite({
                       feedId: feed.id,
                       content: 'Sample content',
+                      title: feed.name,
                       siteId: feed.siteId
                     })}
                   >
