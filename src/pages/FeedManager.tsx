@@ -4,7 +4,6 @@ import { useFeedsStore } from '../store/feeds';
 import { useOpenRouterStore } from '../store/openrouter';
 import { useScheduledPostsStore, ScheduledPost } from '../store/scheduledPosts';
 import { CSVImport } from '../components/CSVImport';
-import { useState } from 'react';
 
 interface ImportedFeed {
   categoria_feed: string;
