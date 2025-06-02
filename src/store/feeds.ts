@@ -54,8 +54,9 @@ export const useFeedsStore = create<FeedsStore>()(
         }
 
         try {
-          const { data: { user }, error: authError } = await supabase.auth.getUser();
-          if (authError || !user) {
+          // Get the current session
+          const { data: { session }, error: authError } = await supabase.auth.getSession();
+          if (authError || !session) {
             throw new Error('User must be authenticated to import feeds');
           }
 
@@ -64,7 +65,8 @@ export const useFeedsStore = create<FeedsStore>()(
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+              // Use the session access token for authentication
+              'Authorization': `Bearer ${session.access_token}`
             },
             body: JSON.stringify({ 
               feedUrl: feed.url,
@@ -79,25 +81,36 @@ export const useFeedsStore = create<FeedsStore>()(
           }
           
           // Process feed items
-          const { data: feedItems } = await supabase
+          const { data: feedItems, error: feedItemsError } = await supabase
             .from('feed_items')
             .select('id')
             .eq('feed_id', feed.id)
             .eq('processed', false);
 
+          if (feedItemsError) {
+            throw new Error(`Failed to fetch feed items: ${feedItemsError.message}`);
+          }
+
           if (feedItems && feedItems.length > 0) {
             // Process each item
             await Promise.all(feedItems.map(async (item) => {
-              await supabase.rpc('process_feed_item', { item_id: item.id });
+              const { error: processError } = await supabase.rpc('process_feed_item', { item_id: item.id });
+              if (processError) {
+                console.error(`Failed to process item ${item.id}:`, processError);
+              }
             }));
           }
           
           // Get count of successfully imported items
-          const { count } = await supabase
+          const { count, error: countError } = await supabase
             .from('feed_items')
             .select('id', { count: 'exact' })
             .eq('feed_id', feed.id)
             .eq('import_status', 'success');
+
+          if (countError) {
+            throw new Error(`Failed to get import count: ${countError.message}`);
+          }
           
           state.updateFeed(id, {
             lastImport: new Date().toISOString(),
