@@ -3,6 +3,7 @@ import { useSitesStore } from '../store/sites';
 import { useFeedsStore } from '../store/feeds';
 import { useOpenRouterStore } from '../store/openrouter';
 import { useFeedImportsStore } from '../store/feedImports';
+import { supabase } from '../lib/supabaseClient';
 import { useScheduledPostsStore, ScheduledPost } from '../store/scheduledPosts';
 import { CSVImport } from '../components/CSVImport';
 
