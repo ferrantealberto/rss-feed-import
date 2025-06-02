@@ -104,7 +104,7 @@ export function FeedManager() {
         title: postTitle,
         content: rewrittenContent,
         excerpt: seo?.description || '',
-        status: 'bozza',
+        status: 'draft',
         categories: seo?.categories || [],
         tags: seo?.tags || [],
         meta: {
