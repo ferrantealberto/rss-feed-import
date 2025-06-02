@@ -54,36 +54,30 @@ export const useFeedsStore = create<FeedsStore>()(
         }
 
         try {
-          const response = await fetch(feed.url, {
+          // Call the Edge Function to fetch and parse the feed
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/import-feed`, {
+            method: 'POST',
             headers: {
-              'Accept': 'application/xml, application/rss+xml, text/xml',
-              'User-Agent': 'RSS Feed Importer/1.0'
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
             },
-            mode: 'cors'
+            body: JSON.stringify({ feedUrl: feed.url })
           });
           
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
           
-          const text = await response.text();
-          const parser = new DOMParser();
-          const xml = parser.parseFromString(text, 'text/xml');
+          const { items, error } = await response.json();
           
-          // Check if parsing was successful
-          const parseError = xml.querySelector('parsererror');
-          if (parseError) {
-            throw new Error('Failed to parse RSS feed');
+          if (error) {
+            throw new Error(error);
           }
           
-          const items = Array.from(xml.querySelectorAll('item'));
           let importedCount = 0;
           
           for (const item of items) {
-            const title = item.querySelector('title')?.textContent;
-            const link = item.querySelector('link')?.textContent;
-            const content = item.querySelector('description')?.textContent;
-            const pubDate = item.querySelector('pubDate')?.textContent;
+            const { title, link, description: content, pubDate } = item;
             
             if (title && content) {
               // Check for duplicates - using limit(1) instead of single()
