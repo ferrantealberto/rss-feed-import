@@ -1,8 +1,8 @@
 import { useForm, Controller } from 'react-hook-form';
 import { useOpenRouterStore } from '../store/openrouter';
-import { useSitesStore, WordPressSite } from '../store/sites';
+import { useSitesStore, WordPressSite, SiteUpdates } from '../store/sites';
 import { v4 as uuidv4 } from 'uuid';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 export function Settings() {
   const { 
@@ -19,6 +19,61 @@ export function Settings() {
   } = useOpenRouterStore();
   const { sites, addSite, updateSite, deleteSite } = useSitesStore();
   const [searchTerm, setSearchTerm] = useState('');
+  const [modifiedSites, setModifiedSites] = useState<Set<string>>(new Set());
+  const originalSites = useRef<{[key: string]: WordPressSite}>({});
+
+  const handleSiteChange = (siteId: string, updates: Partial<WordPressSite>) => {
+    if (!originalSites.current[siteId]) {
+      originalSites.current[siteId] = sites.find(s => s.id === siteId) || {} as WordPressSite;
+    }
+    
+    updateSite(siteId, updates);
+    setModifiedSites(prev => new Set(prev).add(siteId));
+  };
+
+  const handleSaveSite = async (siteId: string) => {
+    try {
+      const site = sites.find(s => s.id === siteId);
+      if (!site) return;
+
+      // Test connection before saving
+      const response = await fetch(`${site.url}/wp-json/wp/v2/posts`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${btoa(site.username + ':' + site.password)}`,
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to connect to WordPress site');
+      }
+
+      // Clear modified state for this site
+      setModifiedSites(prev => {
+        const next = new Set(prev);
+        next.delete(siteId);
+        return next;
+      });
+      delete originalSites.current[siteId];
+
+      alert('Site settings saved successfully!');
+    } catch (error) {
+      alert(`Error saving site settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleCancelSite = (siteId: string) => {
+    const originalSite = originalSites.current[siteId];
+    if (originalSite) {
+      updateSite(siteId, originalSite);
+      setModifiedSites(prev => {
+        const next = new Set(prev);
+        next.delete(siteId);
+        return next;
+      });
+      delete originalSites.current[siteId];
+    }
+  };
 
   const handleVerifyKey = async () => {
     await verifyApiKey();
@@ -143,27 +198,44 @@ export function Settings() {
               <input
                 type="text"
                 value={site.name}
-                onChange={(e) => updateSite(site.id, { name: e.target.value })}
+                onChange={(e) => handleSiteChange(site.id, { name: e.target.value })}
                 placeholder="Site Name"
               />
               <input
                 type="url"
                 value={site.url}
-                onChange={(e) => updateSite(site.id, { url: e.target.value })}
+                onChange={(e) => handleSiteChange(site.id, { url: e.target.value })}
                 placeholder="WordPress URL"
               />
               <input
                 type="text"
                 value={site.username}
-                onChange={(e) => updateSite(site.id, { username: e.target.value })}
+                onChange={(e) => handleSiteChange(site.id, { username: e.target.value })}
                 placeholder="Username"
               />
               <input
                 type="password"
                 value={site.password}
-                onChange={(e) => updateSite(site.id, { password: e.target.value })}
+                onChange={(e) => handleSiteChange(site.id, { password: e.target.value })}
                 placeholder="Application Password"
               />
+              
+              {modifiedSites.has(site.id) && (
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <button
+                    className="button button-primary"
+                    onClick={() => handleSaveSite(site.id)}
+                  >
+                    Save Changes
+                  </button>
+                  <button
+                    className="button button-secondary"
+                    onClick={() => handleCancelSite(site.id)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
 
               <div className="import-settings" style={{ marginTop: '15px', padding: '15px', border: '1px solid #ddd', borderRadius: '4px' }}>
                 <h4 style={{ margin: '0 0 10px 0' }}>Import Settings</h4>
