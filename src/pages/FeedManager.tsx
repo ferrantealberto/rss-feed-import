@@ -118,16 +118,16 @@ export function FeedManager() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Basic ' + btoa(`${site.username}:${site.password}`),
+          'Authorization': `Basic ${btoa(site.username + ':' + site.password)}`,
           'Accept': 'application/json',
-          'Accept-Language': 'it-IT,it'
+          'X-WP-Nonce': site.nonce || ''
         },
         body: JSON.stringify(postData)
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(`Errore API WordPress: ${errorData.message || response.statusText}`);
+        throw new Error(`WordPress API Error: ${errorData.message || response.statusText}`);
       }
       
       // Aggiorna l'orario dell'ultimo post
