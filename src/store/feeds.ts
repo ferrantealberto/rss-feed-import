@@ -54,13 +54,11 @@ export const useFeedsStore = create<FeedsStore>()(
         }
 
         try {
-          // First check if user is authenticated
           const { data: { user }, error: authError } = await supabase.auth.getUser();
           if (authError || !user) {
             throw new Error('User must be authenticated to import feeds');
           }
 
-          // Call Edge Function with proper error handling
           const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/import-feed`;
           const response = await fetch(functionUrl, {
             method: 'POST',
@@ -68,7 +66,10 @@ export const useFeedsStore = create<FeedsStore>()(
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
             },
-            body: JSON.stringify({ feedUrl: feed.url })
+            body: JSON.stringify({ 
+              feedUrl: feed.url,
+              feedId: feed.id
+            })
           });
           
           const data = await response.json();
@@ -77,58 +78,34 @@ export const useFeedsStore = create<FeedsStore>()(
             throw new Error(data.error || `HTTP error! status: ${response.status}`);
           }
           
-          if (!data.items || !Array.isArray(data.items)) {
-            throw new Error('Invalid response format from feed parser');
+          // Process feed items
+          const { data: feedItems } = await supabase
+            .from('feed_items')
+            .select('id')
+            .eq('feed_id', feed.id)
+            .eq('processed', false);
+
+          if (feedItems && feedItems.length > 0) {
+            // Process each item
+            await Promise.all(feedItems.map(async (item) => {
+              await supabase.rpc('process_feed_item', { item_id: item.id });
+            }));
           }
           
-          let importedCount = 0;
-          
-          for (const item of data.items) {
-            const { title, link, description: content, pubDate } = item;
-            
-            if (title && content) {
-              // Check for duplicates - using limit(1) instead of single()
-              const { data: existing } = await supabase
-                .from('imported_posts')
-                .select('id')
-                .eq('original_url', link)
-                .limit(1);
-                
-              if (!existing || existing.length === 0) {
-                // Insert new post with explicit user_id
-                const { error: insertError } = await supabase
-                  .from('imported_posts')
-                  .insert({
-                    feed_id: feed.id,
-                    title: title,
-                    content: content,
-                    original_url: link,
-                    published_at: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
-                    status: 'pending',
-                    user_id: user.id // Explicitly set the user_id
-                  });
-                  
-                if (!insertError) {
-                  importedCount++;
-                } else {
-                  console.error('Error inserting post:', insertError.message);
-                  throw new Error(`Failed to insert post: ${insertError.message}`);
-                }
-              }
-            }
-          }
-          
-          if (importedCount === 0) {
-            throw new Error('No valid items found in feed');
-          }
+          // Get count of successfully imported items
+          const { count } = await supabase
+            .from('feed_items')
+            .select('id', { count: 'exact' })
+            .eq('feed_id', feed.id)
+            .eq('import_status', 'success');
           
           state.updateFeed(id, {
             lastImport: new Date().toISOString(),
             nextImport: calculateNextImport(feed.frequency),
-            totalImported: (feed.totalImported || 0) + importedCount
+            totalImported: (feed.totalImported || 0) + (count || 0)
           });
 
-          return importedCount;
+          return count || 0;
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           console.error('Import failed:', errorMessage);

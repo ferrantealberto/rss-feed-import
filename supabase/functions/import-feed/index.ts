@@ -1,6 +1,7 @@
 // @deno-types="npm:@types/xml2js"
 import { parseString } from 'npm:xml2js';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +15,13 @@ serve(async (req) => {
   }
 
   try {
+    // Initialize Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { auth: { persistSession: false } }
+    );
+
     const { feedUrl } = await req.json();
     
     if (!feedUrl) {
@@ -55,11 +63,32 @@ serve(async (req) => {
           }
 
           const parsedItems = entries.map(entry => ({
+            guid: getFirstValue(entry.guid) || getFirstValue(entry.id) || getFirstValue(entry.link),
             title: getFirstValue(entry.title),
             link: getFirstValue(entry.link) || entry.link?.[0]?.['$']?.href,
             description: getFirstValue(entry.description) || getFirstValue(entry['content:encoded']) || getFirstValue(entry.content),
+            author: getFirstValue(entry.author) || getFirstValue(entry['dc:creator']),
             pubDate: getFirstValue(entry.pubDate) || getFirstValue(entry.published) || new Date().toISOString()
-          })).filter(item => item.title && item.description);
+          })).filter(item => item.guid && item.title && item.description);
+
+          // Insert items into feed_items table
+          for (const item of parsedItems) {
+            const { error } = await supabaseClient
+              .from('feed_items')
+              .insert({
+                guid: item.guid,
+                title: item.title,
+                content: item.description,
+                link: item.link,
+                author: item.author,
+                published_at: item.pubDate,
+                feed_id: feedId
+              });
+
+            if (error) {
+              console.error('Error inserting feed item:', error);
+            }
+          }
 
           resolve(parsedItems);
         } catch (error) {
