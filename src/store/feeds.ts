@@ -54,10 +54,27 @@ export const useFeedsStore = create<FeedsStore>()(
         }
 
         try {
-          const response = await fetch(feed.url);
+          const response = await fetch(feed.url, {
+            headers: {
+              'Accept': 'application/xml, application/rss+xml, text/xml',
+              'User-Agent': 'RSS Feed Importer/1.0'
+            },
+            mode: 'cors'
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
           const text = await response.text();
           const parser = new DOMParser();
           const xml = parser.parseFromString(text, 'text/xml');
+          
+          // Check if parsing was successful
+          const parseError = xml.querySelector('parsererror');
+          if (parseError) {
+            throw new Error('Failed to parse RSS feed');
+          }
           
           const items = Array.from(xml.querySelectorAll('item'));
           let importedCount = 0;
@@ -96,6 +113,10 @@ export const useFeedsStore = create<FeedsStore>()(
             }
           }
           
+          if (importedCount === 0) {
+            throw new Error('No valid items found in feed');
+          }
+          
           state.updateFeed(id, {
             lastImport: new Date().toISOString(),
             nextImport: calculateNextImport(feed.frequency),
@@ -104,8 +125,9 @@ export const useFeedsStore = create<FeedsStore>()(
 
           return importedCount;
         } catch (error) {
-          console.error('Import failed:', error);
-          throw error;
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error('Import failed:', errorMessage);
+          throw new Error(`Failed to import feed: ${errorMessage}`);
         }
       },
       scheduleImports: () => {
