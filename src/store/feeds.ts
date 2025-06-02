@@ -54,18 +54,16 @@ export const useFeedsStore = create<FeedsStore>()(
         }
 
         try {
-          // Get the current session
           const { data: { session }, error: authError } = await supabase.auth.getSession();
           if (authError || !session) {
             throw new Error('User must be authenticated to import feeds');
           }
 
-          const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/import-feed`;
+          const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/n8n-import`;
           const response = await fetch(functionUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              // Use the session access token for authentication
               'Authorization': `Bearer ${session.access_token}`
             },
             body: JSON.stringify({ 
@@ -80,45 +78,13 @@ export const useFeedsStore = create<FeedsStore>()(
             throw new Error(data.error || `HTTP error! status: ${response.status}`);
           }
           
-          // Process feed items
-          const { data: feedItems, error: feedItemsError } = await supabase
-            .from('feed_items')
-            .select('id')
-            .eq('feed_id', feed.id)
-            .eq('processed', false);
-
-          if (feedItemsError) {
-            throw new Error(`Failed to fetch feed items: ${feedItemsError.message}`);
-          }
-
-          if (feedItems && feedItems.length > 0) {
-            // Process each item
-            await Promise.all(feedItems.map(async (item) => {
-              const { error: processError } = await supabase.rpc('process_feed_item', { item_id: item.id });
-              if (processError) {
-                console.error(`Failed to process item ${item.id}:`, processError);
-              }
-            }));
-          }
-          
-          // Get count of successfully imported items
-          const { count, error: countError } = await supabase
-            .from('feed_items')
-            .select('id', { count: 'exact' })
-            .eq('feed_id', feed.id)
-            .eq('import_status', 'success');
-
-          if (countError) {
-            throw new Error(`Failed to get import count: ${countError.message}`);
-          }
-          
           state.updateFeed(id, {
             lastImport: new Date().toISOString(),
             nextImport: calculateNextImport(feed.frequency),
-            totalImported: (feed.totalImported || 0) + (count || 0)
+            totalImported: (feed.totalImported || 0) + (data.result?.imported || 0)
           });
 
-          return count || 0;
+          return data.result?.imported || 0;
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           console.error('Import failed:', errorMessage);
