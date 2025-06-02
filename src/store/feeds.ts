@@ -29,7 +29,7 @@ interface FeedsStore {
 
 export const useFeedsStore = create<FeedsStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       feeds: [],
       addFeed: (feed) => set((state) => ({
         feeds: [...state.feeds, { ...feed, id: crypto.randomUUID() }]
@@ -44,7 +44,7 @@ export const useFeedsStore = create<FeedsStore>()(
       })),
       deleteFeed: (id) => set((state) => ({
         feeds: state.feeds.filter(feed => feed.id !== id)
-      }))
+      })),
       importFeed: async (id) => {
         const state = get();
         const feed = state.feeds.find(f => f.id === id);
