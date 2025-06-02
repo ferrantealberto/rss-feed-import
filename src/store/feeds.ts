@@ -15,6 +15,7 @@ export interface Feed {
   priority?: number;
   lastImport?: string;
   nextImport?: string;
+  totalImported?: number;
 }
 
 interface FeedsStore {
@@ -68,14 +69,14 @@ export const useFeedsStore = create<FeedsStore>()(
             const pubDate = item.querySelector('pubDate')?.textContent;
             
             if (title && content) {
-              // Check for duplicates
+              // Check for duplicates - using limit(1) instead of single()
               const { data: existing } = await supabase
                 .from('imported_posts')
                 .select('id')
                 .eq('original_url', link)
-                .single();
+                .limit(1);
                 
-              if (!existing) {
+              if (!existing || existing.length === 0) {
                 // Insert new post
                 const { data, error } = await supabase
                   .from('imported_posts')
