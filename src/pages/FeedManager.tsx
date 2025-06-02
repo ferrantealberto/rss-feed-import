@@ -46,15 +46,26 @@ export function FeedManager() {
   const [editingFeed, setEditingFeed] = useState<EditingFeed | null>(null);
   const [lastPostTime, setLastPostTime] = useState<{[key: string]: number}>({});
   const [selectedSite, setSelectedSite] = useState<string>('');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   useEffect(() => {
+    // Check authentication status on component mount
+    checkAuth();
+
     // Set up periodic import check
     const checkInterval = setInterval(() => {
-      useFeedsStore.getState().scheduleImports();
+      if (isAuthenticated) {
+        useFeedsStore.getState().scheduleImports();
+      }
     }, 60000); // Check every minute
     
     return () => clearInterval(checkInterval);
-  }, []);
+  }, [isAuthenticated]);
+
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    setIsAuthenticated(!!session);
+  };
 
   const handleEditFeed = (feed: Feed) => {
     setEditingFeed({
@@ -121,6 +132,11 @@ export function FeedManager() {
   };
 
   const handleCSVImport = async (importedFeeds: ImportedFeed[]) => {
+    if (!isAuthenticated) {
+      alert('Please connect to Supabase using the button in the top right corner before importing feeds.');
+      return;
+    }
+
     try {
       const newFeeds = importedFeeds.map(feed => ({
         id: crypto.randomUUID(),
@@ -153,13 +169,12 @@ export function FeedManager() {
   };
 
   const handleImportNow = async (feedId: string) => {
-    try {
-      // Check authentication first
-      const { data: { session }, error: authError } = await supabase.auth.getSession();
-      if (authError || !session) {
-        throw new Error('User must be authenticated to import feeds');
-      }
+    if (!isAuthenticated) {
+      alert('Please connect to Supabase using the button in the top right corner before importing feeds.');
+      return;
+    }
 
+    try {
       const feed = feeds.find(f => f.id === feedId);
       if (!feed) {
         throw new Error('Feed not found');
@@ -168,11 +183,21 @@ export function FeedManager() {
       await useFeedsStore.getState().importFeed(feedId);
       alert('Feed import started successfully');
     } catch (error) {
-      alert('Failed to import feed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('authenticated')) {
+        alert('Please connect to Supabase using the button in the top right corner before importing feeds.');
+      } else {
+        alert('Failed to import feed: ' + errorMessage);
+      }
     }
   };
 
   const handlePublishToSite = async (post: any) => {
+    if (!isAuthenticated) {
+      alert('Please connect to Supabase using the button in the top right corner before publishing posts.');
+      return;
+    }
+
     const site = sites.find(s => s.id === post.siteId);
     
     if (!site) {
@@ -246,6 +271,15 @@ export function FeedManager() {
       alert(`Impossibile pubblicare il post: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="card">
+        <h1 className="card-title">Authentication Required</h1>
+        <p>Please connect to Supabase using the button in the top right corner to manage your feeds.</p>
+      </div>
+    );
+  }
 
   return (
     <div>
